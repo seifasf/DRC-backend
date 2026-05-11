@@ -7,11 +7,6 @@ const paymentSchema = new mongoose.Schema(
       ref: 'WorkOrder',
       required: true,
     },
-    clientId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
     amount: { type: Number, required: true, min: 0 },
     method: {
       type: String,
@@ -30,7 +25,6 @@ const paymentSchema = new mongoose.Schema(
 );
 
 paymentSchema.index({ workOrderId: 1 });
-paymentSchema.index({ clientId: 1 });
 paymentSchema.index({ paidAt: -1 });
 
 module.exports = mongoose.model('Payment', paymentSchema);

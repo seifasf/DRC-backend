@@ -2,17 +2,15 @@ const mongoose = require('mongoose');
 const WorkOrder = require('../models/WorkOrder.model');
 const OrderItem = require('../models/OrderItem.model');
 const Test = require('../models/Test.model');
-const User = require('../models/User.model');
 const buildWorkOrderBlockLines = require('../utils/buildWorkOrderBlockLines');
 const recalculateWorkOrderAmount = require('../utils/recalculateWorkOrderAmount');
 const resolveOrderLinePricing = require('../utils/resolveOrderLinePricing');
 
 const populateWorkOrder = [
-  { path: 'clientId', select: 'name email phone specialization' },
   { path: 'createdBy', select: 'name email role' },
   {
     path: 'blockLines.blockProductId',
-    select: 'name category code unitLabel pricePerUnit currency isAvailable',
+    select: 'name category unitLabel pricePerUnit currency isAvailable',
   },
 ];
 
@@ -28,9 +26,21 @@ exports.listWorkOrders = async (req, res) => {
       filter.doctorName = new RegExp(doctorNameQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     }
 
+    const scope = req.query.scope ? String(req.query.scope).trim() : '';
+    if (scope === 'active') {
+      filter.status = { $in: ['pending', 'in_progress'] };
+    } else if (scope === 'completed') {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ success: false, message: 'Access denied.' });
+      }
+      filter.status = 'completed';
+      filter.paymentStatus = 'paid';
+    }
+
     const orders = await WorkOrder.find(filter)
       .populate(populateWorkOrder)
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
     return res.json({ success: true, data: { workOrders: orders } });
   } catch (err) {
     console.error(err);
@@ -40,13 +50,9 @@ exports.listWorkOrders = async (req, res) => {
 
 exports.getWorkOrder = async (req, res) => {
   try {
-    const order = await WorkOrder.findById(req.params.id).populate(populateWorkOrder);
+    const order = await WorkOrder.findById(req.params.id).populate(populateWorkOrder).lean();
     if (!order) {
       return res.status(404).json({ success: false, message: 'Work order not found.' });
-    }
-
-    if (req.user.role === 'client' && String(order.clientId._id || order.clientId) !== String(req.user._id)) {
-      return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 
     return res.json({ success: true, data: { workOrder: order } });
@@ -60,14 +66,8 @@ exports.createWorkOrder = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { clientId, doctorName, doctorPhone, notes, dueDate, items, blocksProvidedBy, blockLines } =
+    const { doctorName, doctorPhone, notes, dueDate, items, blocksProvidedBy, blockLines } =
       req.body;
-
-    const client = await User.findById(clientId).session(session);
-    if (!client || client.role !== 'client') {
-      await session.abortTransaction();
-      return res.status(400).json({ success: false, message: 'Invalid client.' });
-    }
 
     if (!Array.isArray(items) || items.length === 0) {
       await session.abortTransaction();
@@ -128,7 +128,6 @@ exports.createWorkOrder = async (req, res) => {
     const [workOrder] = await WorkOrder.create(
       [
         {
-          clientId,
           doctorName: String(doctorName).trim(),
           doctorPhone: String(doctorPhone).trim(),
           createdBy: req.user._id,
@@ -256,24 +255,6 @@ exports.cancelWorkOrder = async (req, res) => {
     await order.save();
     const populated = await WorkOrder.findById(order._id).populate(populateWorkOrder);
     return res.json({ success: true, data: { workOrder: populated } });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ success: false, message: 'Server error.' });
-  }
-};
-
-exports.listByClient = async (req, res) => {
-  try {
-    const { clientId } = req.params;
-    if (req.user.role === 'client' && String(clientId) !== String(req.user._id)) {
-      return res.status(403).json({ success: false, message: 'Access denied.' });
-    }
-
-    const orders = await WorkOrder.find({ clientId })
-      .populate(populateWorkOrder)
-      .sort({ createdAt: -1 });
-
-    return res.json({ success: true, data: { workOrders: orders } });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: 'Server error.' });

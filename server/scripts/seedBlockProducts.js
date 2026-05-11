@@ -1,5 +1,5 @@
 /**
- * Seeds default block catalog (LE prices). Idempotent by code.
+ * Seeds default block catalog (LE prices). Idempotent by name/category.
  * Run: npm run seed:blocks
  */
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
@@ -8,7 +8,6 @@ const BlockProduct = require('../models/BlockProduct.model');
 
 const catalog = [
   {
-    code: 'acrylic_small',
     name: 'Acrylic block — small',
     category: 'Acrylic blocks',
     unitLabel: 'block',
@@ -17,7 +16,6 @@ const catalog = [
     isAvailable: true,
   },
   {
-    code: 'acrylic_large',
     name: 'Acrylic block — large',
     category: 'Acrylic blocks',
     unitLabel: 'block',
@@ -26,7 +24,6 @@ const catalog = [
     isAvailable: true,
   },
   {
-    code: 'epoxy_resin',
     name: 'Epoxy resin',
     category: 'Epoxy resin',
     unitLabel: 'block',
@@ -50,7 +47,7 @@ async function main() {
 
   for (const doc of catalog) {
     const result = await BlockProduct.updateOne(
-      { code: doc.code },
+      { name: doc.name, category: doc.category },
       { $setOnInsert: doc },
       { upsert: true }
     );

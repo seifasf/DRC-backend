@@ -33,11 +33,10 @@ orderItemSchema.index({ testId: 1 });
 orderItemSchema.index({ assignedTo: 1 });
 orderItemSchema.index({ workOrderId: 1, testId: 1 });
 
-orderItemSchema.pre('save', function (next) {
+orderItemSchema.pre('save', function () {
   if (this.completedUnits > this.quantity) {
     this.completedUnits = this.quantity;
   }
-  next();
 });
 
 module.exports = mongoose.model('OrderItem', orderItemSchema);

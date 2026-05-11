@@ -75,7 +75,7 @@ exports.cancelAppointment = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Appointment not found.' });
     }
 
-    if (req.user.role === 'client' && String(appt.clientId) !== String(req.user._id)) {
+    if (req.user.role === 'employee' && String(appt.clientId) !== String(req.user._id)) {
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 

@@ -18,11 +18,6 @@ const blockLineSchema = new mongoose.Schema(
 const workOrderSchema = new mongoose.Schema(
   {
     orderCode: { type: String, unique: true, sparse: true },
-    clientId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -60,21 +55,16 @@ const workOrderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-workOrderSchema.index({ clientId: 1 });
 workOrderSchema.index({ status: 1 });
+workOrderSchema.index({ status: 1, paymentStatus: 1 });
 workOrderSchema.index({ createdAt: -1 });
 workOrderSchema.index({ doctorPhone: 1 });
 workOrderSchema.index({ doctorName: 1, doctorPhone: 1 });
 
-workOrderSchema.pre('save', async function (next) {
+workOrderSchema.pre('save', async function () {
   if (this.isNew && !this.orderCode) {
-    try {
-      this.orderCode = await generateOrderCode();
-    } catch (err) {
-      return next(err);
-    }
+    this.orderCode = await generateOrderCode();
   }
-  next();
 });
 
 module.exports = mongoose.model('WorkOrder', workOrderSchema);

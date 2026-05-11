@@ -6,7 +6,6 @@ exports.listPayments = async (req, res) => {
   try {
     const payments = await Payment.find()
       .populate('workOrderId', 'orderCode totalAmount')
-      .populate('clientId', 'name email')
       .populate('recordedBy', 'name email')
       .sort({ paidAt: -1 });
     return res.json({ success: true, data: { payments } });
@@ -22,10 +21,6 @@ exports.listByWorkOrder = async (req, res) => {
     const order = await WorkOrder.findById(workOrderId);
     if (!order) {
       return res.status(404).json({ success: false, message: 'Work order not found.' });
-    }
-
-    if (req.user.role === 'client' && String(order.clientId) !== String(req.user._id)) {
-      return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 
     const payments = await Payment.find({ workOrderId })
@@ -50,7 +45,6 @@ exports.createPayment = async (req, res) => {
 
     const payment = await Payment.create({
       workOrderId,
-      clientId: workOrder.clientId,
       amount,
       method,
       recordedBy: req.user._id,
@@ -62,7 +56,6 @@ exports.createPayment = async (req, res) => {
 
     const populated = await Payment.findById(payment._id)
       .populate('workOrderId', 'orderCode totalAmount amountPaid paymentStatus')
-      .populate('clientId', 'name email')
       .populate('recordedBy', 'name email');
 
     return res.status(201).json({ success: true, data: { payment: populated } });
@@ -78,7 +71,6 @@ exports.unpaidWorkOrders = async (req, res) => {
       paymentStatus: { $in: ['unpaid', 'partial'] },
       status: { $ne: 'cancelled' },
     })
-      .populate('clientId', 'name email phone')
       .sort({ dueDate: 1 });
 
     return res.json({ success: true, data: { workOrders: orders } });
@@ -88,12 +80,30 @@ exports.unpaidWorkOrders = async (req, res) => {
   }
 };
 
+/**
+ * Aggregated payment totals.
+ * Optional ?from=ISO&to=ISO filters by `paidAt` (inclusive). If only `from`
+ * is provided, returns totals from that timestamp onward. Default: all time.
+ *
+ * Use this for end-of-day / shift totals, e.g. ?from=2026-05-04T00:00:00
+ * &to=2026-05-04T23:59:59 -> today's cash drawer breakdown.
+ */
 exports.summary = async (req, res) => {
   try {
+    const match = {};
+    const from = req.query.from ? new Date(req.query.from) : null;
+    const to = req.query.to ? new Date(req.query.to) : null;
+    if (from && !Number.isNaN(from.getTime())) match.paidAt = { ...(match.paidAt || {}), $gte: from };
+    if (to && !Number.isNaN(to.getTime())) match.paidAt = { ...(match.paidAt || {}), $lte: to };
+
+    const pipelinePrefix = Object.keys(match).length ? [{ $match: match }] : [];
+
     const byMethod = await Payment.aggregate([
-      { $group: { _id: '$method', total: { $sum: '$amount' } } },
+      ...pipelinePrefix,
+      { $group: { _id: '$method', total: { $sum: '$amount' }, count: { $sum: 1 } } },
     ]);
     const totals = await Payment.aggregate([
+      ...pipelinePrefix,
       { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
     ]);
 
@@ -102,6 +112,10 @@ exports.summary = async (req, res) => {
       data: {
         byMethod,
         overall: totals[0] || { total: 0, count: 0 },
+        range: {
+          from: from && !Number.isNaN(from.getTime()) ? from.toISOString() : null,
+          to: to && !Number.isNaN(to.getTime()) ? to.toISOString() : null,
+        },
       },
     });
   } catch (err) {

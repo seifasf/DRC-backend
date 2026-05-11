@@ -17,35 +17,36 @@ const createPaymentValidation = [
   body('notes').optional().isString(),
 ];
 
-router.get('/', verifyToken, allowRoles('admin'), paymentController.listPayments);
+router.get('/', verifyToken, allowRoles('admin', 'employee'), paymentController.listPayments);
 
 router.get(
   '/unpaid',
   verifyToken,
-  allowRoles('admin'),
+  allowRoles('admin', 'employee'),
   paymentController.unpaidWorkOrders
 );
 
 router.get(
   '/summary',
   verifyToken,
-  allowRoles('admin'),
+  allowRoles('admin', 'employee'),
   paymentController.summary
 );
 
 router.get(
   '/:workOrderId',
   verifyToken,
-  allowRoles('admin', 'client'),
+  allowRoles('admin', 'employee'),
   workOrderIdParam,
   validateRequest,
   paymentController.listByWorkOrder
 );
 
+// Employees record cash/bank/card collected on-site; admin can also record.
 router.post(
   '/',
   verifyToken,
-  allowRoles('admin'),
+  allowRoles('admin', 'employee'),
   createPaymentValidation,
   validateRequest,
   paymentController.createPayment

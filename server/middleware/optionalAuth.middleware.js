@@ -10,7 +10,7 @@ const optionalVerifyToken = async (req, res, next) => {
     }
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
+    const user = await User.findById(decoded.id).select('-password').lean();
     if (user && user.isActive) req.user = user;
   } catch {
     // ignore invalid token for optional routes

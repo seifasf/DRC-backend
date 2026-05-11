@@ -27,7 +27,6 @@ const catalog = [
       { code: 'chw_2m', label: '2,000,000 cycles — price per package (4 samples)', cycles: 2000000, packageSamples: 4, price: 45000 },
     ],
     pricingComponents: [],
-    estimatedDaysPerUnit: 2,
   },
   {
     name: 'Micro-tensile test',
@@ -42,7 +41,6 @@ const catalog = [
       { code: 'microtensile_beam', label: 'Micro-tensile test (per beam)', pricePerUnit: 40, billUnitLabel: 'beam' },
       { code: 'failure_mode_beam', label: 'Failure mode (per beam)', pricePerUnit: 50, billUnitLabel: 'beam' },
     ],
-    estimatedDaysPerUnit: 3,
   },
   {
     name: 'Thermocycling',
@@ -60,7 +58,6 @@ const catalog = [
       { code: 'th_10000', label: '10,000 cycles — package price', cycles: 10000, price: 12500 },
     ],
     pricingComponents: [],
-    estimatedDaysPerUnit: 1,
   },
   {
     name: 'Microhardness test',
@@ -71,7 +68,6 @@ const catalog = [
     pricePerUnit: 200,
     pricingTiers: [],
     pricingComponents: [],
-    estimatedDaysPerUnit: 1,
   },
   {
     name: 'Roughness test',
@@ -82,7 +78,6 @@ const catalog = [
     pricePerUnit: 200,
     pricingTiers: [],
     pricingComponents: [],
-    estimatedDaysPerUnit: 1,
   },
   {
     name: 'Universal testing machine',
@@ -102,7 +97,6 @@ const catalog = [
       },
       { code: 'utm_micro_shear', label: 'Micro-shear (per sample)', pricePerUnit: 100, billUnitLabel: 'sample' },
     ],
-    estimatedDaysPerUnit: 2,
   },
   {
     name: 'Push out test',
@@ -114,7 +108,6 @@ const catalog = [
     pricePerUnit: 0,
     pricingTiers: [],
     pricingComponents: [],
-    estimatedDaysPerUnit: 2,
   },
   {
     name: 'Marginal adaptation',
@@ -125,7 +118,6 @@ const catalog = [
     pricePerUnit: 150,
     pricingTiers: [],
     pricingComponents: [],
-    estimatedDaysPerUnit: 3,
   },
   {
     name: 'Internal adaptation',
@@ -136,7 +128,6 @@ const catalog = [
     pricePerUnit: 130,
     pricingTiers: [],
     pricingComponents: [],
-    estimatedDaysPerUnit: 3,
   },
   {
     name: 'Tooth brushing simulation',
@@ -147,7 +138,6 @@ const catalog = [
     pricePerUnit: 85,
     pricingTiers: [],
     pricingComponents: [],
-    estimatedDaysPerUnit: 2,
   },
   {
     name: 'Color Test',
@@ -158,7 +148,6 @@ const catalog = [
     pricePerUnit: 70,
     pricingTiers: [],
     pricingComponents: [],
-    estimatedDaysPerUnit: 1,
   },
 ];
 

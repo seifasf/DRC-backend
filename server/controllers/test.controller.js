@@ -22,7 +22,7 @@ exports.listTests = async (req, res) => {
     if (!req.user || req.user.role !== 'admin') {
       filter.isAvailable = true;
     }
-    const tests = await Test.find(filter).populate(populateTest).sort({ category: 1, name: 1 });
+    const tests = await Test.find(filter).populate(populateTest).sort({ category: 1, name: 1 }).lean();
     return res.json({ success: true, data: { tests } });
   } catch (err) {
     console.error(err);
@@ -32,7 +32,7 @@ exports.listTests = async (req, res) => {
 
 exports.getTest = async (req, res) => {
   try {
-    const test = await Test.findById(req.params.id).populate(populateTest);
+    const test = await Test.findById(req.params.id).populate(populateTest).lean();
     if (!test) {
       return res.status(404).json({ success: false, message: 'Test not found.' });
     }
@@ -60,7 +60,6 @@ exports.createTest = async (req, res) => {
       'pricingComponents',
       'machine',
       'machineId',
-      'estimatedDaysPerUnit',
       'isAvailable',
     ];
     const payload = { createdBy: req.user._id };
@@ -97,7 +96,6 @@ exports.updateTest = async (req, res) => {
       'pricingComponents',
       'machine',
       'machineId',
-      'estimatedDaysPerUnit',
       'isAvailable',
     ];
     const updates = {};

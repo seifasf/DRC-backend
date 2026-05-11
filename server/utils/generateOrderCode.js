@@ -1,26 +1,30 @@
 /**
- * Generates next order code: WO-YYYY-XXXX (4-digit sequence per year)
+ * Next order code: simple numeric string "1", "2", "3", …
+ * Supports legacy WO-0001-style codes by reading their trailing number.
  */
 const generateOrderCode = async () => {
   const WorkOrder = require('../models/WorkOrder.model');
-  const year = new Date().getFullYear();
-  const prefix = `WO-${year}-`;
+  const rows = await WorkOrder.find(
+    { orderCode: { $exists: true, $nin: [null, ''] } },
+    { orderCode: 1, _id: 0 }
+  ).lean();
 
-  const last = await WorkOrder.findOne({
-    orderCode: new RegExp(`^${prefix}`),
-  })
-    .sort({ orderCode: -1 })
-    .select('orderCode')
-    .lean();
-
-  let nextNum = 1;
-  if (last?.orderCode) {
-    const part = last.orderCode.replace(prefix, '');
-    const n = parseInt(part, 10);
-    if (!Number.isNaN(n)) nextNum = n + 1;
+  let max = 0;
+  for (const row of rows) {
+    const code = String(row?.orderCode || '').trim();
+    if (!code) continue;
+    if (/^\d+$/.test(code)) {
+      const n = parseInt(code, 10);
+      if (!Number.isNaN(n) && n > max) max = n;
+      continue;
+    }
+    const m = code.match(/(\d+)\s*$/);
+    if (!m) continue;
+    const n = parseInt(m[1], 10);
+    if (!Number.isNaN(n) && n > max) max = n;
   }
 
-  return `${prefix}${String(nextNum).padStart(4, '0')}`;
+  return String(max + 1);
 };
 
 module.exports = generateOrderCode;

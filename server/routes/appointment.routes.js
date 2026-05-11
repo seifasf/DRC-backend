@@ -23,12 +23,12 @@ const confirmValidation = [
 
 router.get('/', verifyToken, allowRoles('admin'), appointmentController.listAppointments);
 
-router.get('/my', verifyToken, allowRoles('client'), appointmentController.myAppointments);
+router.get('/my', verifyToken, allowRoles('employee'), appointmentController.myAppointments);
 
 router.post(
   '/',
   verifyToken,
-  allowRoles('client'),
+  allowRoles('employee'),
   createValidation,
   validateRequest,
   appointmentController.createAppointment
@@ -46,7 +46,7 @@ router.patch(
 router.patch(
   '/:id/cancel',
   verifyToken,
-  allowRoles('admin', 'client'),
+  allowRoles('admin', 'employee'),
   idParam,
   validateRequest,
   appointmentController.cancelAppointment

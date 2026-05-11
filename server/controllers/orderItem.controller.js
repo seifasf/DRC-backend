@@ -25,7 +25,8 @@ exports.listByWorkOrder = async (req, res) => {
     const { workOrderId } = req.params;
     const items = await OrderItem.find({ workOrderId })
       .populate('testId')
-      .populate('assignedTo', 'name email role');
+      .populate('assignedTo', 'name email role')
+      .lean();
 
     return res.json({ success: true, data: { orderItems: items } });
   } catch (err) {

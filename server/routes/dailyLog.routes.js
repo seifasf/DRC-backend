@@ -13,7 +13,9 @@ const empIdParam = param('empId').isMongoId().withMessage('Invalid employee id')
 const createLogValidation = [
   body('orderItemId').isMongoId().withMessage('orderItemId is required'),
   body('date').optional().isISO8601().toDate(),
-  body('unitsCompleted').isInt({ min: 0 }).withMessage('unitsCompleted must be a non-negative integer'),
+  body('unitsCompleted')
+    .isFloat({ gt: 0 })
+    .withMessage('unitsCompleted must be a positive number (cycles/samples or whole line units).'),
   body('notes').optional().isString(),
 ];
 

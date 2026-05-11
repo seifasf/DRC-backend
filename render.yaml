@@ -1,0 +1,26 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# After linking this repo: set MONGO_URI, JWT_SECRET (?32 random chars), and CORS_ORIGINS in the dashboard
+# or via `render env`. CORS_ORIGINS must include https://drc-system.vercel.app
+
+services:
+  - type: web
+    name: drc-lab-api
+    runtime: node
+    region: frankfurt
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render sits behind a proxy — correct client IPs for rate limiting
+      - key: TRUST_PROXY
+        value: "1"
+      # Paste your live SPA origin(s); comma-separated, no trailing slash
+      - key: CORS_ORIGINS
+        value: https://drc-system.vercel.app
+      - key: JWT_EXPIRES_IN
+        value: 45d
+      # Set these in Dashboard if you prefer secrets outside git (recommended):
+      # MONGO_URI, JWT_SECRET — use Sync / Environment ? Add Environment Variable

@@ -38,7 +38,6 @@ const testSchema = new mongoose.Schema(
     pricingTiers: { type: [pricingTierSchema], default: [] },
     /** Sum-of-lines billing. Order lines must send componentQuantities { code: count }. */
     pricingComponents: { type: [pricingComponentSchema], default: [] },
-    estimatedDaysPerUnit: { type: Number, min: 0 },
     isAvailable: { type: Boolean, default: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },

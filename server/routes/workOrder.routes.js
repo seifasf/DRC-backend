@@ -8,10 +8,8 @@ const validateRequest = require('../middleware/validateRequest.middleware');
 const router = express.Router();
 
 const idParam = param('id').isMongoId().withMessage('Invalid work order id');
-const clientIdParam = param('clientId').isMongoId().withMessage('Invalid client id');
 
 const createWorkOrderValidation = [
-  body('clientId').isMongoId().withMessage('Valid clientId is required'),
   body('doctorName').trim().notEmpty().withMessage('Doctor name is required'),
   body('doctorPhone').trim().notEmpty().withMessage('Doctor phone is required'),
   body('notes').optional().isString(),
@@ -53,18 +51,10 @@ router.get(
   workOrderController.summary
 );
 
-router.get(
-  '/client/:clientId',
-  verifyToken,
-  allowRoles('admin', 'client'),
-  clientIdParam,
-  validateRequest,
-  workOrderController.listByClient
-);
-
 const listWorkOrdersQuery = [
   query('doctorPhone').optional().isString().trim(),
   query('doctorName').optional().isString().trim(),
+  query('scope').optional().isIn(['active', 'completed', 'all']).withMessage('Invalid scope'),
 ];
 
 router.get(
@@ -79,7 +69,7 @@ router.get(
 router.get(
   '/:id',
   verifyToken,
-  allowRoles('admin', 'employee', 'client'),
+  allowRoles('admin', 'employee'),
   idParam,
   validateRequest,
   workOrderController.getWorkOrder

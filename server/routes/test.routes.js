@@ -20,7 +20,6 @@ const createTestValidation = [
   body('pricingComponents').optional().isArray(),
   body('machine').optional().isString(),
   body('machineId').optional().isMongoId().withMessage('machineId must be a valid id'),
-  body('estimatedDaysPerUnit').optional().isFloat({ min: 0 }),
   body('isAvailable').optional().isBoolean(),
 ];
 
@@ -35,7 +34,6 @@ const updateTestValidation = [
   body('pricingComponents').optional().isArray(),
   body('machine').optional().isString(),
   body('machineId').optional().isMongoId(),
-  body('estimatedDaysPerUnit').optional().isFloat({ min: 0 }),
   body('isAvailable').optional().isBoolean(),
 ];
 

@@ -10,19 +10,22 @@
     "seed:tests": "node scripts/seedTests.js",
     "seed:blocks": "node scripts/seedBlockProducts.js",
     "seed:test-pricing": "node scripts/updateTestCatalogPricing.js",
+    "seed:full-catalog": "node scripts/seedFullCatalog.js",
     "seed:admin": "node scripts/ensureAdminUser.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.4.1",
     "express-validator": "^7.3.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",

@@ -6,7 +6,7 @@ exports.listBlockProducts = async (req, res) => {
     if (!req.user || req.user.role !== 'admin') {
       filter.isAvailable = true;
     }
-    const blockProducts = await BlockProduct.find(filter).sort({ category: 1, name: 1 });
+    const blockProducts = await BlockProduct.find(filter).sort({ category: 1, name: 1 }).lean();
     return res.json({ success: true, data: { blockProducts } });
   } catch (err) {
     console.error(err);
@@ -16,7 +16,7 @@ exports.listBlockProducts = async (req, res) => {
 
 exports.getBlockProduct = async (req, res) => {
   try {
-    const blockProduct = await BlockProduct.findById(req.params.id);
+    const blockProduct = await BlockProduct.findById(req.params.id).lean();
     if (!blockProduct) {
       return res.status(404).json({ success: false, message: 'Block product not found.' });
     }
@@ -32,7 +32,7 @@ exports.getBlockProduct = async (req, res) => {
 
 exports.createBlockProduct = async (req, res) => {
   try {
-    const allowed = ['code', 'name', 'category', 'unitLabel', 'pricePerUnit', 'currency', 'isAvailable'];
+    const allowed = ['name', 'category', 'unitLabel', 'pricePerUnit', 'currency', 'isAvailable'];
     const payload = {};
     for (const key of allowed) {
       if (req.body[key] !== undefined) payload[key] = req.body[key];
@@ -42,16 +42,13 @@ exports.createBlockProduct = async (req, res) => {
     return res.status(201).json({ success: true, data: { blockProduct } });
   } catch (err) {
     console.error(err);
-    if (err.code === 11000) {
-      return res.status(400).json({ success: false, message: 'Code must be unique.' });
-    }
     return res.status(500).json({ success: false, message: 'Server error.' });
   }
 };
 
 exports.updateBlockProduct = async (req, res) => {
   try {
-    const allowed = ['code', 'name', 'category', 'unitLabel', 'pricePerUnit', 'currency', 'isAvailable'];
+    const allowed = ['name', 'category', 'unitLabel', 'pricePerUnit', 'currency', 'isAvailable'];
     const updates = {};
     for (const key of allowed) {
       if (req.body[key] !== undefined) updates[key] = req.body[key];
@@ -67,9 +64,6 @@ exports.updateBlockProduct = async (req, res) => {
     return res.json({ success: true, data: { blockProduct } });
   } catch (err) {
     console.error(err);
-    if (err.code === 11000) {
-      return res.status(400).json({ success: false, message: 'Code must be unique.' });
-    }
     return res.status(500).json({ success: false, message: 'Server error.' });
   }
 };

@@ -1,6 +1,7 @@
 const DailyLog = require('../models/DailyLog.model');
 const OrderItem = require('../models/OrderItem.model');
 const WorkOrder = require('../models/WorkOrder.model');
+const { computeDeltaPackages, roundPkgProgress, EPS } = require('../utils/dailyLogWorkload');
 
 const refreshWorkOrderFromItems = async (workOrderId) => {
   const items = await OrderItem.find({ workOrderId });
@@ -64,18 +65,27 @@ exports.createDailyLog = async (req, res) => {
       }
     }
 
+    const { deltaPkgs, err } = computeDeltaPackages(orderItem, unitsCompleted);
+    if (err) {
+      return res.status(err.status).json({ success: false, message: err.message });
+    }
+
+    const u = Number(unitsCompleted);
+    const prevDone = Number(orderItem.completedUnits || 0);
+
     const log = await DailyLog.create({
       employeeId: req.user._id,
       orderItemId,
       workOrderId: orderItem.workOrderId,
       date: date ? new Date(date) : new Date(),
-      unitsCompleted,
+      unitsCompleted: u,
       notes,
     });
 
-    orderItem.completedUnits += unitsCompleted;
-    if (orderItem.completedUnits >= orderItem.quantity) {
-      orderItem.completedUnits = orderItem.quantity;
+    orderItem.completedUnits = roundPkgProgress(prevDone + deltaPkgs);
+    const q = Number(orderItem.quantity);
+    if (orderItem.completedUnits >= q - EPS) {
+      orderItem.completedUnits = q;
       orderItem.status = 'done';
     } else if (orderItem.status === 'queued') {
       orderItem.status = 'in_progress';

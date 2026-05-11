@@ -1,8 +1,10 @@
 const OrderItem = require('../models/OrderItem.model');
 const WorkOrder = require('../models/WorkOrder.model');
+const Payment = require('../models/Payment.model');
 
 /**
  * totalAmount = sum(order item subtotals) + sum(block line subtotals when lab supplies blocks).
+ * Also re-syncs paymentStatus so it never goes stale after the total changes.
  */
 async function recalculateWorkOrderAmount(workOrderId, options = {}) {
   const { session } = options;
@@ -24,6 +26,22 @@ async function recalculateWorkOrderAmount(workOrderId, options = {}) {
   }
 
   wo.totalAmount = testsTotal + blocksTotal;
+
+  // Re-sync paymentStatus whenever totalAmount changes so it never goes stale.
+  const agg = await Payment.aggregate([
+    { $match: { workOrderId: wo._id } },
+    { $group: { _id: null, total: { $sum: '$amount' } } },
+  ]);
+  const amountPaid = agg.length ? agg[0].total : 0;
+  wo.amountPaid = amountPaid;
+  if (amountPaid === 0) {
+    wo.paymentStatus = 'unpaid';
+  } else if (amountPaid < wo.totalAmount) {
+    wo.paymentStatus = 'partial';
+  } else {
+    wo.paymentStatus = 'paid';
+  }
+
   await wo.save({ session });
   return wo;
 }
