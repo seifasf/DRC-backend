@@ -211,6 +211,16 @@ exports.updateWorkOrder = async (req, res) => {
       });
     }
 
+    if (req.user.role === 'employee' && req.body.status != null) {
+      const s = String(req.body.status);
+      if (s === 'completed' || s === 'cancelled') {
+        return res.status(403).json({
+          success: false,
+          message: 'Employees cannot set this status on work orders.',
+        });
+      }
+    }
+
     const blockPayloadChanged =
       req.body.blocksProvidedBy !== undefined || req.body.blockLines !== undefined;
 
@@ -245,7 +255,11 @@ exports.updateWorkOrder = async (req, res) => {
     const allowed = ['notes', 'dueDate', 'status', 'doctorName', 'doctorPhone'];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
-        order[key] = typeof req.body[key] === 'string' ? req.body[key].trim() : req.body[key];
+        if (key === 'notes' && typeof req.body[key] === 'string') {
+          order[key] = req.body[key];
+        } else {
+          order[key] = typeof req.body[key] === 'string' ? req.body[key].trim() : req.body[key];
+        }
       }
     }
 
