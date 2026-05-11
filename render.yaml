@@ -1,5 +1,5 @@
-# Render Blueprint — https://render.com/docs/blueprint-spec
-# First deploy: you’ll be prompted for MONGO_URI (sync: false). JWT_SECRET is auto-generated.
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# First deploy: you will be prompted for MONGO_URI (sync: false). JWT_SECRET is auto-generated.
 
 services:
   - type: web
@@ -13,17 +13,16 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # Render sits behind a proxy — correct client IPs for rate limiting
       - key: TRUST_PROXY
         value: "1"
-      # MongoDB — set in dashboard when prompted; never commit real URIs
       - key: MONGO_URI
         sync: false
-      # Strong random secret (?32 chars); base64 256-bit from Render
       - key: JWT_SECRET
         generateValue: true
-      # Live SPA — comma-separated, no trailing slash
       - key: CORS_ORIGINS
         value: https://drc-system.vercel.app
       - key: JWT_EXPIRES_IN
         value: 45d
+      # Optional: "1" = allow https://*.vercel.app (Preview deploys)
+      # - key: CORS_ALLOW_VERCEL_PREVIEWS
+      #   value: "1"
