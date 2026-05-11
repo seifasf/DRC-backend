@@ -1,6 +1,7 @@
 /**
  * How progress is logged for an order line depends on pricing snapshot:
  * - Tier + cycles/samples: body `unitsCompleted` is workload (cycles/samples); stored line progress stays as fractional packages.
+ * - Components: `unitsCompleted` is primary bill units (e.g. samples); progress scales by (primaryTotal / line quantity).
  * - Otherwise: `unitsCompleted` is whole line units (packages or simple qty).
  */
 
@@ -16,6 +17,23 @@ function dailyLogWorkloadMeta(orderItem) {
     const samples = Number(bd.packageSamples);
     if (Number.isFinite(samples) && samples > 0) {
       return { kind: 'samples', perPackage: samples };
+    }
+  }
+  if (bd && bd.mode === 'components' && bd.components && typeof bd.components === 'object') {
+    let primaryTotal = 0;
+    /** @type {string | null} */
+    let billUnitLabel = null;
+    for (const row of Object.values(bd.components)) {
+      if (!row || typeof row !== 'object') continue;
+      const q = Number(row.quantity);
+      if (!Number.isFinite(q) || q <= 0) continue;
+      primaryTotal += q;
+      if (!billUnitLabel && typeof row.billUnitLabel === 'string' && row.billUnitLabel.trim()) {
+        billUnitLabel = row.billUnitLabel.trim();
+      }
+    }
+    if (primaryTotal > 0) {
+      return { kind: 'components', primaryTotal, billUnitLabel };
     }
   }
   return { kind: 'line' };
@@ -59,6 +77,33 @@ function computeDeltaPackages(orderItem, unitsCompleted) {
       };
     }
     return { deltaPkgs: u / cpp };
+  }
+
+  if (meta.kind === 'components') {
+    const pt = meta.primaryTotal;
+    const lq = Number(orderItem.quantity);
+    if (!Number.isFinite(lq) || lq <= 0) {
+      return {
+        deltaPkgs: 0,
+        err: { status: 400, message: 'Invalid line quantity for component pricing.' },
+      };
+    }
+    const remainingPrimary = Math.max(0, pt - (lq > 0 ? (donePkgs / lq) * pt : 0));
+    if (u > remainingPrimary + EPS) {
+      const label = meta.billUnitLabel || 'unit(s)';
+      const cap =
+        Math.round(remainingPrimary * 1e6) % 1000000 === 0
+          ? String(Math.round(remainingPrimary))
+          : remainingPrimary.toFixed(4).replace(/\.?0+$/, '');
+      return {
+        deltaPkgs: 0,
+        err: {
+          status: 400,
+          message: `You can log at most ${cap} ${label} remaining on this task.`,
+        },
+      };
+    }
+    return { deltaPkgs: (u / pt) * lq };
   }
 
   if (!Number.isInteger(u)) {

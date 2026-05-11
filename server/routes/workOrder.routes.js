@@ -20,6 +20,9 @@ const createWorkOrderValidation = [
   body('items.*.assignedTo').optional().isMongoId(),
   body('items.*.pricingTierCode').optional().isString(),
   body('items.*.componentQuantities').optional().isObject(),
+  body('items.*.componentUnitPrices').optional().isObject(),
+  body('items.*.tierPriceOverride').optional({ values: 'falsy' }).isFloat({ min: 0 }),
+  body('items.*.simpleUnitPriceOverride').optional({ values: 'falsy' }).isFloat({ min: 0 }),
   body('blocksProvidedBy')
     .isIn(['lab', 'customer'])
     .withMessage('blocksProvidedBy must be lab (we supply blocks) or customer (outsourced / client blocks)'),

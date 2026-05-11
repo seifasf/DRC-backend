@@ -3,6 +3,7 @@
  * @param {import('mongoose').Document} test - Test document
  * @param {{ quantity?: number, pricingTierCode?: string, componentQuantities?: Record<string, number> }} line
  */
+const { looksLikeSample, simpleUnitLooksLikeSamples } = require('./sampleBilling');
 function resolveOrderLinePricing(test, line) {
   const tiers = test.pricingTiers?.length ? test.pricingTiers : [];
   const comps = test.pricingComponents?.length ? test.pricingComponents : [];
@@ -26,8 +27,24 @@ function resolveOrderLinePricing(test, line) {
       err.status = 400;
       throw err;
     }
-    const unitPrice = tier.price;
-    const subtotal = qty * tier.price;
+    let unitPrice = tier.price;
+    const rawOverride = line.tierPriceOverride;
+    if (rawOverride != null && rawOverride !== '') {
+      const o = Number(rawOverride);
+      if (!Number.isFinite(o) || o < 0) {
+        const err = new Error('tierPriceOverride must be a non-negative number when provided.');
+        err.status = 400;
+        throw err;
+      }
+      const samples = Number(tier.packageSamples);
+      if (!Number.isFinite(samples) || samples <= 0) {
+        const err = new Error('Custom package price is only allowed for tiers that define samples per package.');
+        err.status = 400;
+        throw err;
+      }
+      unitPrice = o;
+    }
+    const subtotal = qty * unitPrice;
     return {
       quantity: qty,
       unitPrice,
@@ -38,7 +55,9 @@ function resolveOrderLinePricing(test, line) {
         tierLabel: tier.label,
         cycles: tier.cycles,
         packageSamples: tier.packageSamples,
-        pricePerPackage: tier.price,
+        pricePerPackage: unitPrice,
+        catalogPricePerPackage:
+          rawOverride != null && rawOverride !== '' && unitPrice !== tier.price ? tier.price : undefined,
         currency: tier.currency || 'LE',
       },
     };
@@ -64,14 +83,35 @@ function resolveOrderLinePricing(test, line) {
         err.status = 400;
         throw err;
       }
+      const rawOverride =
+        line.componentUnitPrices && typeof line.componentUnitPrices === 'object'
+          ? line.componentUnitPrices[c.code]
+          : undefined;
+      const hasOverride =
+        rawOverride != null &&
+        rawOverride !== '' &&
+        Number.isFinite(Number(rawOverride));
+      if (hasOverride) {
+        if (!looksLikeSample(c.billUnitLabel) && !looksLikeSample(c.label)) {
+          const err = new Error(
+            `Custom unit price is only allowed for sample components ("${c.code}").`
+          );
+          err.status = 400;
+          throw err;
+        }
+      }
+      const pricePerUnit = hasOverride ? Math.max(0, Number(rawOverride)) : c.pricePerUnit;
       breakdown[c.code] = {
         label: c.label,
         quantity: count,
-        pricePerUnit: c.pricePerUnit,
+        pricePerUnit,
         billUnitLabel: c.billUnitLabel || 'unit',
-        lineTotal: count * c.pricePerUnit,
+        lineTotal: count * pricePerUnit,
       };
-      subtotal += count * c.pricePerUnit;
+      if (hasOverride && pricePerUnit !== c.pricePerUnit) {
+        breakdown[c.code].catalogPricePerUnit = c.pricePerUnit;
+      }
+      subtotal += count * pricePerUnit;
       countedUnits += count;
     }
 
@@ -107,10 +147,25 @@ function resolveOrderLinePricing(test, line) {
     err.status = 400;
     throw err;
   }
-  const unitPrice = test.pricePerUnit;
+  let unitPrice = test.pricePerUnit;
+  const rawSimple = line.simpleUnitPriceOverride;
+  if (rawSimple != null && rawSimple !== '') {
+    const o = Number(rawSimple);
+    if (!Number.isFinite(o) || o < 0) {
+      const err = new Error('simpleUnitPriceOverride must be a non-negative number when provided.');
+      err.status = 400;
+      throw err;
+    }
+    if (!simpleUnitLooksLikeSamples(test)) {
+      const err = new Error('Custom unit price is only allowed when the test bills by sample-like units.');
+      err.status = 400;
+      throw err;
+    }
+    unitPrice = o;
+  }
   if (!(unitPrice > 0)) {
     const err = new Error(
-      'This test has no simple pricePerUnit yet. Use tier/component pricing or set a price (admin).'
+      'Resolved unit price must be greater than zero. Use tier/component pricing or set a price (admin).'
     );
     err.status = 400;
     throw err;
@@ -123,6 +178,9 @@ function resolveOrderLinePricing(test, line) {
     pricingBreakdown: {
       mode: 'simple',
       currency: 'LE',
+      ...(rawSimple != null && rawSimple !== '' && Number(unitPrice) !== Number(test.pricePerUnit)
+        ? { catalogPricePerUnit: test.pricePerUnit }
+        : {}),
     },
   };
 }

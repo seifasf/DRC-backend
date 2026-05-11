@@ -90,6 +90,21 @@ exports.createWorkOrder = async (req, res) => {
           quantity: line.quantity,
           pricingTierCode: line.pricingTierCode,
           componentQuantities: line.componentQuantities,
+          ...(req.user.role === 'employee'
+            ? {
+                ...(line.componentUnitPrices &&
+                typeof line.componentUnitPrices === 'object' &&
+                !Array.isArray(line.componentUnitPrices)
+                  ? { componentUnitPrices: line.componentUnitPrices }
+                  : {}),
+                ...(line.tierPriceOverride != null && line.tierPriceOverride !== ''
+                  ? { tierPriceOverride: line.tierPriceOverride }
+                  : {}),
+                ...(line.simpleUnitPriceOverride != null && line.simpleUnitPriceOverride !== ''
+                  ? { simpleUnitPriceOverride: line.simpleUnitPriceOverride }
+                  : {}),
+              }
+            : {}),
         });
       } catch (e) {
         await session.abortTransaction();
