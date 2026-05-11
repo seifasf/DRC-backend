@@ -11,7 +11,8 @@
     "seed:blocks": "node scripts/seedBlockProducts.js",
     "seed:test-pricing": "node scripts/updateTestCatalogPricing.js",
     "seed:full-catalog": "node scripts/seedFullCatalog.js",
-    "seed:admin": "node scripts/ensureAdminUser.js"
+    "seed:admin": "node scripts/ensureAdminUser.js",
+    "gen:jwt-secret": "node scripts/generateJwtSecret.js"
   },
   "engines": {
     "node": ">=20"
