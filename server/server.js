@@ -3,6 +3,7 @@ require('dotenv').config();
 const assertProductionSecrets = require('./config/assertProductionSecrets');
 assertProductionSecrets();
 
+const mongoose = require('mongoose');
 const express = require('express');
 const compression = require('compression');
 const helmet = require('helmet');
@@ -74,7 +75,18 @@ app.use(`${api}/payments`, paymentRoutes);
 app.use(`${api}/reports`, reportRoutes);
 
 app.get('/health', (req, res) => {
-  res.json({ success: true, data: { status: 'ok' } });
+  const mongoOk = mongoose.connection.readyState === 1;
+  res.json({
+    success: mongoOk,
+    data: {
+      status: mongoOk ? 'ok' : 'degraded',
+      mongo: {
+        connected: mongoOk,
+        /** 0 disconnected, 1 connected, 2 connecting, 3 disconnecting */
+        readyState: mongoose.connection.readyState,
+      },
+    },
+  });
 });
 
 app.use((req, res) => {

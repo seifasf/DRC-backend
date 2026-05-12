@@ -101,26 +101,30 @@ exports.createWorkOrder = async (req, res) => {
 
       let priced;
       try {
-        priced = resolveOrderLinePricing(test, {
-          quantity: line.quantity,
-          pricingTierCode: line.pricingTierCode,
-          componentQuantities: line.componentQuantities,
-          ...(req.user.role === 'employee' || req.user.role === 'manager'
-            ? {
-                ...(line.componentUnitPrices &&
-                typeof line.componentUnitPrices === 'object' &&
-                !Array.isArray(line.componentUnitPrices)
-                  ? { componentUnitPrices: line.componentUnitPrices }
-                  : {}),
-                ...(line.tierPriceOverride != null && line.tierPriceOverride !== ''
-                  ? { tierPriceOverride: line.tierPriceOverride }
-                  : {}),
-                ...(line.simpleUnitPriceOverride != null && line.simpleUnitPriceOverride !== ''
-                  ? { simpleUnitPriceOverride: line.simpleUnitPriceOverride }
-                  : {}),
-              }
-            : {}),
-        });
+        priced = resolveOrderLinePricing(
+          test,
+          {
+            quantity: line.quantity,
+            pricingTierCode: line.pricingTierCode,
+            componentQuantities: line.componentQuantities,
+            ...(req.user.role === 'employee' || req.user.role === 'manager'
+              ? {
+                  ...(line.componentUnitPrices &&
+                  typeof line.componentUnitPrices === 'object' &&
+                  !Array.isArray(line.componentUnitPrices)
+                    ? { componentUnitPrices: line.componentUnitPrices }
+                    : {}),
+                  ...(line.tierPriceOverride != null && line.tierPriceOverride !== ''
+                    ? { tierPriceOverride: line.tierPriceOverride }
+                    : {}),
+                  ...(line.simpleUnitPriceOverride != null && line.simpleUnitPriceOverride !== ''
+                    ? { simpleUnitPriceOverride: line.simpleUnitPriceOverride }
+                    : {}),
+                }
+              : {}),
+          },
+          { relaxSampleOverrideRules: req.user.role === 'manager' }
+        );
       } catch (e) {
         await session.abortTransaction();
         if (e.status === 400) {

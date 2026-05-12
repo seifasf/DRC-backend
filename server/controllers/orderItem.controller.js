@@ -124,12 +124,16 @@ exports.addOrderItem = async (req, res) => {
 
     let priced;
     try {
-      priced = resolveOrderLinePricing(test, {
-        quantity: req.body.quantity,
-        pricingTierCode: req.body.pricingTierCode,
-        componentQuantities: req.body.componentQuantities,
-        ...buildPricingPayloadForOverrides(req, req.body),
-      });
+      priced = resolveOrderLinePricing(
+        test,
+        {
+          quantity: req.body.quantity,
+          pricingTierCode: req.body.pricingTierCode,
+          componentQuantities: req.body.componentQuantities,
+          ...buildPricingPayloadForOverrides(req, req.body),
+        },
+        { relaxSampleOverrideRules: req.user.role === 'manager' }
+      );
     } catch (e) {
       if (e.status === 400) {
         return res.status(400).json({ success: false, message: `${test.name}: ${e.message}` });
@@ -253,10 +257,14 @@ exports.updateOrderItemLine = async (req, res) => {
     const baseLine = buildLineInputFromBody(test, item, req.body);
     let priced;
     try {
-      priced = resolveOrderLinePricing(test, {
-        ...baseLine,
-        ...buildPricingPayloadForOverrides(req, req.body),
-      });
+      priced = resolveOrderLinePricing(
+        test,
+        {
+          ...baseLine,
+          ...buildPricingPayloadForOverrides(req, req.body),
+        },
+        { relaxSampleOverrideRules: req.user.role === 'manager' }
+      );
     } catch (e) {
       if (e.status === 400) {
         return res.status(400).json({ success: false, message: `${test.name}: ${e.message}` });

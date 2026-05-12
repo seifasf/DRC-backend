@@ -2,7 +2,7 @@
  * Seeds DRC Lab catalog with the FINAL price list (idempotent).
  * Uses $set so re-runs refresh the pricing for existing tests/blocks.
  *
- *   - Test catalog (17 entries): simple, tiered, or component pricing per logic.
+ *   - Test catalog (incl. Nano leakage, Biaxial flexural strength): simple, tiered, or component pricing.
  *   - Block products (4 entries): small/large acrylic, acrylic w/ rubber base, epoxy resin.
  *
  * Run: npm run seed:full-catalog
@@ -11,6 +11,24 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const mongoose = require('mongoose');
 const Test = require('../models/Test.model');
 const BlockProduct = require('../models/BlockProduct.model');
+
+/** Strip optional catalog fields; infer unitLabel when missing. */
+function catalogDoc(t) {
+  const tiers = t.pricingTiers || [];
+  const comps = t.pricingComponents || [];
+  let { unitLabel } = t;
+  if (!unitLabel || !String(unitLabel).trim()) {
+    if (tiers.length) unitLabel = 'package';
+    else if (comps.length) unitLabel = 'billable unit';
+    else unitLabel = 'sample';
+  }
+  return {
+    ...t,
+    description: '',
+    machine: '',
+    unitLabel,
+  };
+}
 
 /* ---------------- Test catalog ---------------- */
 
@@ -247,6 +265,33 @@ const tests = [
     pricingComponents: [],
     isAvailable: true,
   },
+
+  {
+    name: 'Nano leakage',
+    category: 'Surface / leakage',
+    description: '',
+    machine: '',
+    unitLabel: 'package',
+    pricePerUnit: 0,
+    pricingTiers: [
+      { code: 'nl_1sec', label: 'One section', price: 400, packageSamples: 1 },
+      { code: 'nl_2sec', label: 'Two sections', price: 600, packageSamples: 1 },
+    ],
+    pricingComponents: [],
+    isAvailable: true,
+  },
+
+  {
+    name: 'Biaxial flexural strength',
+    category: 'Mechanical',
+    description: '',
+    machine: '',
+    unitLabel: 'sample',
+    pricePerUnit: 200,
+    pricingTiers: [],
+    pricingComponents: [],
+    isAvailable: true,
+  },
 ];
 
 /* ---------------- Block products ---------------- */
@@ -298,7 +343,8 @@ async function main() {
   let testInserted = 0;
   let testUpdated = 0;
   for (const t of tests) {
-    const res = await Test.updateOne({ name: t.name }, { $set: t }, { upsert: true });
+    const doc = catalogDoc(t);
+    const res = await Test.updateOne({ name: doc.name }, { $set: doc }, { upsert: true });
     if (res.upsertedCount === 1) testInserted += 1;
     else testUpdated += 1;
   }

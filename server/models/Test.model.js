@@ -28,10 +28,11 @@ const testSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     category: { type: String, required: true, trim: true },
-    description: { type: String, required: true },
+    description: { type: String, default: '', trim: true },
     machine: { type: String, trim: true },
     machineId: { type: mongoose.Schema.Types.ObjectId, ref: 'Machine' },
-    unitLabel: { type: String, required: true, trim: true },
+    /** Billing unit for simple mode; tiered uses packages, components use line bill units. */
+    unitLabel: { type: String, default: 'sample', trim: true },
     /** Used when pricingTiers and pricingComponents are empty (simple per-unit billing). */
     pricePerUnit: { type: Number, required: true, min: 0, default: 0 },
     /** Select-one packages (e.g. cycles bands). Order lines must send pricingTierCode + quantity (# packages). */

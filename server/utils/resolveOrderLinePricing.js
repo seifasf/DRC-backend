@@ -2,9 +2,11 @@
  * Computes quantity, unitPrice, subtotal and audit payload for an order line.
  * @param {import('mongoose').Document} test - Test document
  * @param {{ quantity?: number, pricingTierCode?: string, componentQuantities?: Record<string, number> }} line
+ * @param {{ relaxSampleOverrideRules?: boolean }} [options] When true (manager), allow per-order price overrides on any tier/component/simple line.
  */
 const { looksLikeSample, simpleUnitLooksLikeSamples } = require('./sampleBilling');
-function resolveOrderLinePricing(test, line) {
+function resolveOrderLinePricing(test, line, options = {}) {
+  const relax = options.relaxSampleOverrideRules === true;
   const tiers = test.pricingTiers?.length ? test.pricingTiers : [];
   const comps = test.pricingComponents?.length ? test.pricingComponents : [];
 
@@ -37,7 +39,7 @@ function resolveOrderLinePricing(test, line) {
         throw err;
       }
       const samples = Number(tier.packageSamples);
-      if (!Number.isFinite(samples) || samples <= 0) {
+      if (!relax && (!Number.isFinite(samples) || samples <= 0)) {
         const err = new Error('Custom package price is only allowed for tiers that define samples per package.');
         err.status = 400;
         throw err;
@@ -92,7 +94,7 @@ function resolveOrderLinePricing(test, line) {
         rawOverride !== '' &&
         Number.isFinite(Number(rawOverride));
       if (hasOverride) {
-        if (!looksLikeSample(c.billUnitLabel) && !looksLikeSample(c.label)) {
+        if (!relax && !looksLikeSample(c.billUnitLabel) && !looksLikeSample(c.label)) {
           const err = new Error(
             `Custom unit price is only allowed for sample components ("${c.code}").`
           );
@@ -156,7 +158,7 @@ function resolveOrderLinePricing(test, line) {
       err.status = 400;
       throw err;
     }
-    if (!simpleUnitLooksLikeSamples(test)) {
+    if (!relax && !simpleUnitLooksLikeSamples(test)) {
       const err = new Error('Custom unit price is only allowed when the test bills by sample-like units.');
       err.status = 400;
       throw err;

@@ -79,7 +79,7 @@ exports.login = async (req, res) => {
       data: { user: userObj, token },
     });
   } catch (err) {
-    console.error(err);
+    console.error('[auth/login]', err?.name, err?.message);
     return res.status(500).json({ success: false, message: 'Server error during login.' });
   }
 };

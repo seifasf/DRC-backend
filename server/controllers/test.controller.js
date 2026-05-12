@@ -67,7 +67,13 @@ exports.createTest = async (req, res) => {
       if (req.body[key] !== undefined) payload[key] = req.body[key];
     }
     if (payload.pricePerUnit === undefined) payload.pricePerUnit = 0;
-
+    if (payload.description === undefined) payload.description = '';
+    if (payload.machine === undefined) payload.machine = '';
+    if (!payload.unitLabel || !String(payload.unitLabel).trim()) {
+      if (payload.pricingTiers?.length) payload.unitLabel = 'package';
+      else if (payload.pricingComponents?.length) payload.unitLabel = 'billable unit';
+      else payload.unitLabel = 'sample';
+    }
     const created = await Test.create(payload);
     const test = await Test.findById(created._id).populate(populateTest);
     return res.status(201).json({ success: true, data: { test } });
