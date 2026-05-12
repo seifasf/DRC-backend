@@ -44,11 +44,11 @@ router.get(
   paymentController.listByWorkOrder
 );
 
-// Employees record cash/bank/card collected on-site; admin can also record.
+// Managers & admins record on-site payments; employees log work only (see daily logs).
 router.post(
   '/',
   verifyToken,
-  allowRoles('admin', 'employee', 'manager'),
+  allowRoles('admin', 'manager'),
   createPaymentValidation,
   validateRequest,
   paymentController.createPayment
