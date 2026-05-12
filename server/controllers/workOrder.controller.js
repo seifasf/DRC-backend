@@ -9,9 +9,14 @@ const {
   assertManagerCanAccessWorkOrder,
   managerWorkOrderFilter,
 } = require('../utils/managerOrderAccess');
+const {
+  bodyHasPricingOverrideFields,
+  isStaffPricingActor,
+} = require('../utils/staffLinePricingWorkOrder');
 
 const populateWorkOrder = [
   { path: 'createdBy', select: 'name email role' },
+  { path: 'staffLinePricingBy', select: 'name email' },
   {
     path: 'blockLines.blockProductId',
     select: 'name category unitLabel pricePerUnit currency isAvailable',
@@ -150,6 +155,9 @@ exports.createWorkOrder = async (req, res) => {
       throw e;
     }
 
+    const staffPricingOnCreate =
+      isStaffPricingActor(req.user.role) && items.some((line) => bodyHasPricingOverrideFields(line));
+
     const [workOrder] = await WorkOrder.create(
       [
         {
@@ -164,6 +172,13 @@ exports.createWorkOrder = async (req, res) => {
           status: 'pending',
           paymentStatus: 'unpaid',
           amountPaid: 0,
+          ...(staffPricingOnCreate
+            ? {
+                staffLinePricingUsed: true,
+                staffLinePricingAt: new Date(),
+                staffLinePricingBy: req.user._id,
+              }
+            : {}),
         },
       ],
       { session }

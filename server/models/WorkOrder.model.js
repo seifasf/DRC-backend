@@ -51,6 +51,10 @@ const workOrderSchema = new mongoose.Schema(
       default: 'unpaid',
     },
     dueDate: Date,
+    /** Non-admin staff applied explicit line price overrides (tier / component / simple). */
+    staffLinePricingUsed: { type: Boolean, default: false },
+    staffLinePricingAt: Date,
+    staffLinePricingBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }
 );

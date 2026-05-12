@@ -5,6 +5,10 @@ const User = require('../models/User.model');
 const recalculateWorkOrderAmount = require('../utils/recalculateWorkOrderAmount');
 const resolveOrderLinePricing = require('../utils/resolveOrderLinePricing');
 const { assertManagerCanAccessWorkOrder } = require('../utils/managerOrderAccess');
+const {
+  isStaffPricingActor,
+  recordStaffLinePricingEdit,
+} = require('../utils/staffLinePricingWorkOrder');
 
 const syncWorkOrderProgress = async (workOrderId) => {
   const items = await OrderItem.find({ workOrderId });
@@ -148,6 +152,11 @@ exports.addOrderItem = async (req, res) => {
     await workOrder.save();
     await recalculateWorkOrderAmount(workOrderId);
 
+    const overridePayload = buildPricingPayloadForOverrides(req, req.body);
+    if (isStaffPricingActor(req.user.role) && Object.keys(overridePayload).length > 0) {
+      await recordStaffLinePricingEdit(workOrderId, req.user._id);
+    }
+
     const populated = await OrderItem.findById(item._id)
       .populate('testId')
       .populate('assignedTo', 'name email');
@@ -266,6 +275,11 @@ exports.updateOrderItemLine = async (req, res) => {
     await item.save();
     await recalculateWorkOrderAmount(item.workOrderId);
     await syncWorkOrderProgress(item.workOrderId);
+
+    const overridePayload = buildPricingPayloadForOverrides(req, req.body);
+    if (isStaffPricingActor(req.user.role) && Object.keys(overridePayload).length > 0) {
+      await recordStaffLinePricingEdit(item.workOrderId, req.user._id);
+    }
 
     const populated = await OrderItem.findById(item._id)
       .populate('testId')

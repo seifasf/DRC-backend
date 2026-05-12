@@ -31,7 +31,7 @@ router.get(
 router.post(
   '/',
   verifyToken,
-  allowRoles('employee', 'admin'),
+  allowRoles('employee', 'admin', 'manager'),
   createLogValidation,
   validateRequest,
   dailyLogController.createDailyLog

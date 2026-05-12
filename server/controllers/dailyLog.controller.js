@@ -56,7 +56,7 @@ exports.createDailyLog = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid work order.' });
     }
 
-    if (req.user.role === 'employee') {
+    if (req.user.role === 'employee' || req.user.role === 'manager') {
       if (!orderItem.assignedTo || String(orderItem.assignedTo) !== String(req.user._id)) {
         return res.status(403).json({
           success: false,
