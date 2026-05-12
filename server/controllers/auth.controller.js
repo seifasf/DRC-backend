@@ -25,6 +25,10 @@ exports.register = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Cannot assign admin role.' });
     }
 
+    if (!isBootstrap && role === 'manager' && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Cannot assign manager role.' });
+    }
+
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) {
       return res.status(400).json({ success: false, message: 'Email already registered.' });

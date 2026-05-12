@@ -10,7 +10,7 @@ const paymentSchema = new mongoose.Schema(
     amount: { type: Number, required: true, min: 0 },
     method: {
       type: String,
-      enum: ['cash', 'bank_transfer', 'card', 'other'],
+      enum: ['cash', 'bank_transfer', 'card', 'visa', 'vodafone_cash', 'other'],
       required: true,
     },
     recordedBy: {

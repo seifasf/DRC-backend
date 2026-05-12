@@ -12,31 +12,33 @@ const workOrderIdParam = param('workOrderId').isMongoId().withMessage('Invalid w
 const createPaymentValidation = [
   body('workOrderId').isMongoId().withMessage('workOrderId is required'),
   body('amount').isFloat({ gt: 0 }).withMessage('amount must be greater than 0'),
-  body('method').isIn(['cash', 'bank_transfer', 'card', 'other']).withMessage('Invalid method'),
+  body('method')
+    .isIn(['cash', 'bank_transfer', 'card', 'visa', 'vodafone_cash', 'other'])
+    .withMessage('Invalid method'),
   body('paidAt').optional().isISO8601().toDate(),
   body('notes').optional().isString(),
 ];
 
-router.get('/', verifyToken, allowRoles('admin', 'employee'), paymentController.listPayments);
+router.get('/', verifyToken, allowRoles('admin', 'employee', 'manager'), paymentController.listPayments);
 
 router.get(
   '/unpaid',
   verifyToken,
-  allowRoles('admin', 'employee'),
+  allowRoles('admin', 'employee', 'manager'),
   paymentController.unpaidWorkOrders
 );
 
 router.get(
   '/summary',
   verifyToken,
-  allowRoles('admin', 'employee'),
+  allowRoles('admin', 'employee', 'manager'),
   paymentController.summary
 );
 
 router.get(
   '/:workOrderId',
   verifyToken,
-  allowRoles('admin', 'employee'),
+  allowRoles('admin', 'employee', 'manager'),
   workOrderIdParam,
   validateRequest,
   paymentController.listByWorkOrder
@@ -46,7 +48,7 @@ router.get(
 router.post(
   '/',
   verifyToken,
-  allowRoles('admin', 'employee'),
+  allowRoles('admin', 'employee', 'manager'),
   createPaymentValidation,
   validateRequest,
   paymentController.createPayment

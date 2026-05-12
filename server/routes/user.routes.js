@@ -17,7 +17,7 @@ const updateUserValidation = [
   body('email').optional().isEmail().normalizeEmail(),
   body('phone').optional().isString(),
   body('specialization').optional().isString(),
-  body('role').optional().isIn(['employee', 'admin']),
+  body('role').optional().isIn(['employee', 'admin', 'manager']),
 ];
 
 router.get('/', userController.listUsers);

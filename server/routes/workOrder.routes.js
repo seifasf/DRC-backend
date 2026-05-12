@@ -63,7 +63,7 @@ const listWorkOrdersQuery = [
 router.get(
   '/',
   verifyToken,
-  allowRoles('admin', 'employee'),
+  allowRoles('admin', 'employee', 'manager'),
   listWorkOrdersQuery,
   validateRequest,
   workOrderController.listWorkOrders
@@ -72,7 +72,7 @@ router.get(
 router.get(
   '/:id',
   verifyToken,
-  allowRoles('admin', 'employee'),
+  allowRoles('admin', 'employee', 'manager'),
   idParam,
   validateRequest,
   workOrderController.getWorkOrder
@@ -81,7 +81,7 @@ router.get(
 router.post(
   '/',
   verifyToken,
-  allowRoles('admin', 'employee'),
+  allowRoles('admin', 'employee', 'manager'),
   createWorkOrderValidation,
   validateRequest,
   workOrderController.createWorkOrder
@@ -99,7 +99,7 @@ router.patch(
 router.patch(
   '/:id',
   verifyToken,
-  allowRoles('admin', 'employee'),
+  allowRoles('admin', 'employee', 'manager'),
   updateWorkOrderValidation,
   validateRequest,
   workOrderController.updateWorkOrder

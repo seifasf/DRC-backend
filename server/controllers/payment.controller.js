@@ -1,14 +1,26 @@
 const Payment = require('../models/Payment.model');
 const WorkOrder = require('../models/WorkOrder.model');
 const recalcPaymentStatus = require('../utils/recalcPaymentStatus');
+const { assertManagerCanAccessWorkOrder } = require('../utils/managerOrderAccess');
 
 exports.listPayments = async (req, res) => {
   try {
     const payments = await Payment.find()
-      .populate('workOrderId', 'orderCode totalAmount')
+      .populate('workOrderId', 'orderCode totalAmount status paymentStatus')
       .populate('recordedBy', 'name email')
-      .sort({ paidAt: -1 });
-    return res.json({ success: true, data: { payments } });
+      .sort({ paidAt: -1 })
+      .lean();
+
+    let list = payments;
+    if (req.user.role === 'manager') {
+      list = payments.filter((p) => {
+        const wo = p.workOrderId;
+        if (!wo) return true;
+        return !(wo.status === 'completed' && wo.paymentStatus === 'paid');
+      });
+    }
+
+    return res.json({ success: true, data: { payments: list } });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: 'Server error.' });
@@ -22,6 +34,8 @@ exports.listByWorkOrder = async (req, res) => {
     if (!order) {
       return res.status(404).json({ success: false, message: 'Work order not found.' });
     }
+
+    if (!assertManagerCanAccessWorkOrder(req, res, order)) return;
 
     const payments = await Payment.find({ workOrderId })
       .populate('recordedBy', 'name email')
@@ -42,6 +56,8 @@ exports.createPayment = async (req, res) => {
     if (!workOrder || workOrder.status === 'cancelled') {
       return res.status(404).json({ success: false, message: 'Work order not found.' });
     }
+
+    if (!assertManagerCanAccessWorkOrder(req, res, workOrder)) return;
 
     const payment = await Payment.create({
       workOrderId,
@@ -70,8 +86,7 @@ exports.unpaidWorkOrders = async (req, res) => {
     const orders = await WorkOrder.find({
       paymentStatus: { $in: ['unpaid', 'partial'] },
       status: { $ne: 'cancelled' },
-    })
-      .sort({ dueDate: 1 });
+    }).sort({ dueDate: 1 });
 
     return res.json({ success: true, data: { workOrders: orders } });
   } catch (err) {
@@ -98,12 +113,34 @@ exports.summary = async (req, res) => {
 
     const pipelinePrefix = Object.keys(match).length ? [{ $match: match }] : [];
 
+    const managerStages =
+      req.user.role === 'manager'
+        ? [
+            {
+              $lookup: {
+                from: 'workorders',
+                localField: 'workOrderId',
+                foreignField: '_id',
+                as: 'wo',
+              },
+            },
+            { $unwind: '$wo' },
+            {
+              $match: {
+                $or: [{ 'wo.status': { $ne: 'completed' } }, { 'wo.paymentStatus': { $ne: 'paid' } }],
+              },
+            },
+          ]
+        : [];
+
     const byMethod = await Payment.aggregate([
       ...pipelinePrefix,
+      ...managerStages,
       { $group: { _id: '$method', total: { $sum: '$amount' }, count: { $sum: 1 } } },
     ]);
     const totals = await Payment.aggregate([
       ...pipelinePrefix,
+      ...managerStages,
       { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
     ]);
 

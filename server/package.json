@@ -12,6 +12,8 @@
     "seed:test-pricing": "node scripts/updateTestCatalogPricing.js",
     "seed:full-catalog": "node scripts/seedFullCatalog.js",
     "seed:admin": "node scripts/ensureAdminUser.js",
+    "db:set-role": "node scripts/setUserRole.js",
+    "db:purge-work-orders": "node scripts/purgeWorkOrders.js",
     "gen:jwt-secret": "node scripts/generateJwtSecret.js"
   },
   "engines": {

@@ -5,6 +5,10 @@ const Test = require('../models/Test.model');
 const buildWorkOrderBlockLines = require('../utils/buildWorkOrderBlockLines');
 const recalculateWorkOrderAmount = require('../utils/recalculateWorkOrderAmount');
 const resolveOrderLinePricing = require('../utils/resolveOrderLinePricing');
+const {
+  assertManagerCanAccessWorkOrder,
+  managerWorkOrderFilter,
+} = require('../utils/managerOrderAccess');
 
 const populateWorkOrder = [
   { path: 'createdBy', select: 'name email role' },
@@ -37,6 +41,10 @@ exports.listWorkOrders = async (req, res) => {
       filter.paymentStatus = 'paid';
     }
 
+    if (req.user.role === 'manager') {
+      filter.$and = [...(filter.$and || []), managerWorkOrderFilter()];
+    }
+
     const orders = await WorkOrder.find(filter)
       .populate(populateWorkOrder)
       .sort({ createdAt: -1 })
@@ -54,6 +62,8 @@ exports.getWorkOrder = async (req, res) => {
     if (!order) {
       return res.status(404).json({ success: false, message: 'Work order not found.' });
     }
+
+    if (!assertManagerCanAccessWorkOrder(req, res, order)) return;
 
     return res.json({ success: true, data: { workOrder: order } });
   } catch (err) {
@@ -90,7 +100,7 @@ exports.createWorkOrder = async (req, res) => {
           quantity: line.quantity,
           pricingTierCode: line.pricingTierCode,
           componentQuantities: line.componentQuantities,
-          ...(req.user.role === 'employee'
+          ...(req.user.role === 'employee' || req.user.role === 'manager'
             ? {
                 ...(line.componentUnitPrices &&
                 typeof line.componentUnitPrices === 'object' &&
@@ -200,6 +210,8 @@ exports.updateWorkOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Work order not found.' });
     }
 
+    if (!assertManagerCanAccessWorkOrder(req, res, order)) return;
+
     if (order.status === 'cancelled') {
       return res.status(400).json({ success: false, message: 'Cannot update a cancelled order.' });
     }
@@ -208,6 +220,13 @@ exports.updateWorkOrder = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: 'Employees cannot cancel work orders.',
+      });
+    }
+
+    if (req.user.role === 'manager' && req.body.status === 'cancelled') {
+      return res.status(403).json({
+        success: false,
+        message: 'Managers cannot cancel work orders.',
       });
     }
 

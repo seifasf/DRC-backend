@@ -4,6 +4,7 @@ const Test = require('../models/Test.model');
 const User = require('../models/User.model');
 const recalculateWorkOrderAmount = require('../utils/recalculateWorkOrderAmount');
 const resolveOrderLinePricing = require('../utils/resolveOrderLinePricing');
+const { assertManagerCanAccessWorkOrder } = require('../utils/managerOrderAccess');
 
 const syncWorkOrderProgress = async (workOrderId) => {
   const items = await OrderItem.find({ workOrderId });
@@ -20,9 +21,76 @@ const syncWorkOrderProgress = async (workOrderId) => {
   }
 };
 
+function buildPricingPayloadForOverrides(req, body) {
+  const role = req.user.role;
+  const allow = role === 'employee' || role === 'manager' || role === 'admin';
+  if (!allow) return {};
+  return {
+    ...(body.componentUnitPrices &&
+    typeof body.componentUnitPrices === 'object' &&
+    !Array.isArray(body.componentUnitPrices)
+      ? { componentUnitPrices: body.componentUnitPrices }
+      : {}),
+    ...(body.tierPriceOverride != null && body.tierPriceOverride !== ''
+      ? { tierPriceOverride: body.tierPriceOverride }
+      : {}),
+    ...(body.simpleUnitPriceOverride != null && body.simpleUnitPriceOverride !== ''
+      ? { simpleUnitPriceOverride: body.simpleUnitPriceOverride }
+      : {}),
+  };
+}
+
+function buildLineInputFromBody(test, item, body) {
+  const bd = item.pricingBreakdown || {};
+  const tiers = test.pricingTiers?.length;
+  const comps = test.pricingComponents?.length;
+
+  if (tiers) {
+    return {
+      quantity:
+        body.quantity != null && body.quantity !== ''
+          ? Number(body.quantity)
+          : item.quantity,
+      pricingTierCode: body.pricingTierCode ?? bd.tierCode,
+    };
+  }
+
+  if (comps) {
+    const cq = body.componentQuantities && typeof body.componentQuantities === 'object' ? body.componentQuantities : {};
+    const merged = {};
+    for (const c of test.pricingComponents) {
+      if (cq[c.code] != null && cq[c.code] !== '') {
+        merged[c.code] = Number(cq[c.code]);
+      } else if (bd.components?.[c.code]?.quantity != null) {
+        merged[c.code] = Number(bd.components[c.code].quantity);
+      } else {
+        merged[c.code] = 0;
+      }
+    }
+    const line = { componentQuantities: merged };
+    if (body.quantity != null && body.quantity !== '') {
+      line.quantity = Number(body.quantity);
+    }
+    return line;
+  }
+
+  return {
+    quantity:
+      body.quantity != null && body.quantity !== ''
+        ? Number(body.quantity)
+        : item.quantity,
+  };
+}
+
 exports.listByWorkOrder = async (req, res) => {
   try {
     const { workOrderId } = req.params;
+    const workOrder = await WorkOrder.findById(workOrderId);
+    if (!workOrder) {
+      return res.status(404).json({ success: false, message: 'Work order not found.' });
+    }
+    if (!assertManagerCanAccessWorkOrder(req, res, workOrder)) return;
+
     const items = await OrderItem.find({ workOrderId })
       .populate('testId')
       .populate('assignedTo', 'name email role')
@@ -43,6 +111,8 @@ exports.addOrderItem = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Work order not found.' });
     }
 
+    if (!assertManagerCanAccessWorkOrder(req, res, workOrder)) return;
+
     const test = await Test.findById(req.body.testId);
     if (!test || !test.isAvailable) {
       return res.status(400).json({ success: false, message: 'Invalid or unavailable test.' });
@@ -54,6 +124,7 @@ exports.addOrderItem = async (req, res) => {
         quantity: req.body.quantity,
         pricingTierCode: req.body.pricingTierCode,
         componentQuantities: req.body.componentQuantities,
+        ...buildPricingPayloadForOverrides(req, req.body),
       });
     } catch (e) {
       if (e.status === 400) {
@@ -95,6 +166,12 @@ exports.assignOrderItem = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order item not found.' });
     }
 
+    const workOrder = await WorkOrder.findById(item.workOrderId);
+    if (!workOrder) {
+      return res.status(404).json({ success: false, message: 'Work order not found.' });
+    }
+    if (!assertManagerCanAccessWorkOrder(req, res, workOrder)) return;
+
     const assignee = await User.findById(req.body.assignedTo);
     if (!assignee || assignee.role !== 'employee') {
       return res.status(400).json({ success: false, message: 'Must assign to an employee user.' });
@@ -124,8 +201,70 @@ exports.updateOrderItemStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order item not found.' });
     }
 
+    const workOrder = await WorkOrder.findById(item.workOrderId);
+    if (!workOrder) {
+      return res.status(404).json({ success: false, message: 'Work order not found.' });
+    }
+    if (!assertManagerCanAccessWorkOrder(req, res, workOrder)) return;
+
     item.status = req.body.status;
     await item.save();
+    await syncWorkOrderProgress(item.workOrderId);
+
+    const populated = await OrderItem.findById(item._id)
+      .populate('testId')
+      .populate('assignedTo', 'name email');
+
+    return res.json({ success: true, data: { orderItem: populated } });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+exports.updateOrderItemLine = async (req, res) => {
+  try {
+    const item = await OrderItem.findById(req.params.id);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Order item not found.' });
+    }
+
+    const workOrder = await WorkOrder.findById(item.workOrderId);
+    if (!workOrder || workOrder.status === 'cancelled') {
+      return res.status(404).json({ success: false, message: 'Work order not found.' });
+    }
+
+    if (!assertManagerCanAccessWorkOrder(req, res, workOrder)) return;
+
+    const test = await Test.findById(item.testId);
+    if (!test || !test.isAvailable) {
+      return res.status(400).json({ success: false, message: 'Invalid or unavailable test.' });
+    }
+
+    const baseLine = buildLineInputFromBody(test, item, req.body);
+    let priced;
+    try {
+      priced = resolveOrderLinePricing(test, {
+        ...baseLine,
+        ...buildPricingPayloadForOverrides(req, req.body),
+      });
+    } catch (e) {
+      if (e.status === 400) {
+        return res.status(400).json({ success: false, message: `${test.name}: ${e.message}` });
+      }
+      throw e;
+    }
+
+    item.quantity = priced.quantity;
+    item.unitPrice = priced.unitPrice;
+    item.subtotal = priced.subtotal;
+    item.pricingBreakdown = priced.pricingBreakdown;
+    if (item.completedUnits > item.quantity) {
+      item.completedUnits = item.quantity;
+    }
+
+    await item.save();
+    await recalculateWorkOrderAmount(item.workOrderId);
     await syncWorkOrderProgress(item.workOrderId);
 
     const populated = await OrderItem.findById(item._id)
@@ -145,6 +284,9 @@ exports.deleteOrderItem = async (req, res) => {
     if (!item) {
       return res.status(404).json({ success: false, message: 'Order item not found.' });
     }
+
+    const workOrder = await WorkOrder.findById(item.workOrderId);
+    if (workOrder && !assertManagerCanAccessWorkOrder(req, res, workOrder)) return;
 
     const wid = item.workOrderId;
     await item.deleteOne();

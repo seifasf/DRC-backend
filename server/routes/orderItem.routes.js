@@ -16,6 +16,9 @@ const addItemValidation = [
   body('quantity').optional().isInt({ min: 1 }),
   body('pricingTierCode').optional().isString(),
   body('componentQuantities').optional().isObject(),
+  body('tierPriceOverride').optional({ values: 'falsy' }).isFloat({ min: 0 }),
+  body('simpleUnitPriceOverride').optional({ values: 'falsy' }).isFloat({ min: 0 }),
+  body('componentUnitPrices').optional().isObject(),
   body('assignedTo').optional().isMongoId(),
 ];
 
@@ -29,12 +32,23 @@ const statusValidation = [
   body('status').isIn(['queued', 'in_progress', 'done']).withMessage('Invalid status'),
 ];
 
-const staff = [verifyToken, allowRoles('admin', 'employee')];
+const updateLineValidation = [
+  itemIdParam,
+  body('quantity').optional().isFloat({ gt: 0 }),
+  body('pricingTierCode').optional().isString(),
+  body('componentQuantities').optional().isObject(),
+  body('tierPriceOverride').optional({ values: 'falsy' }).isFloat({ min: 0 }),
+  body('simpleUnitPriceOverride').optional({ values: 'falsy' }).isFloat({ min: 0 }),
+  body('componentUnitPrices').optional().isObject(),
+];
+
+const staff = [verifyToken, allowRoles('admin', 'employee', 'manager')];
 
 router.get('/:workOrderId', ...staff, workOrderIdParam, validateRequest, orderItemController.listByWorkOrder);
 router.post('/:workOrderId', ...staff, addItemValidation, validateRequest, orderItemController.addOrderItem);
 router.patch('/:id/assign', ...staff, assignValidation, validateRequest, orderItemController.assignOrderItem);
 router.patch('/:id/status', ...staff, statusValidation, validateRequest, orderItemController.updateOrderItemStatus);
-router.delete('/:id', verifyToken, allowRoles('admin'), itemIdParam, validateRequest, orderItemController.deleteOrderItem);
+router.patch('/:id', ...staff, updateLineValidation, validateRequest, orderItemController.updateOrderItemLine);
+router.delete('/:id', verifyToken, allowRoles('admin', 'manager'), itemIdParam, validateRequest, orderItemController.deleteOrderItem);
 
 module.exports = router;
