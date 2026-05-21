@@ -8,6 +8,7 @@ const resolveOrderLinePricing = require('../utils/resolveOrderLinePricing');
 const {
   assertManagerCanAccessWorkOrder,
   managerWorkOrderFilter,
+  managerCompletedDeliveryFilter,
 } = require('../utils/managerOrderAccess');
 const {
   bodyHasPricingOverrideFields,
@@ -17,6 +18,7 @@ const {
 const populateWorkOrder = [
   { path: 'createdBy', select: 'name email role' },
   { path: 'staffLinePricingBy', select: 'name email' },
+  { path: 'doctorReceivedBy', select: 'name email' },
   {
     path: 'blockLines.blockProductId',
     select: 'name category unitLabel pricePerUnit currency isAvailable',
@@ -39,14 +41,15 @@ exports.listWorkOrders = async (req, res) => {
     if (scope === 'active') {
       filter.status = { $in: ['pending', 'in_progress'] };
     } else if (scope === 'completed') {
-      if (req.user.role !== 'admin') {
+      if (req.user.role === 'admin') {
+        filter.status = 'completed';
+        filter.paymentStatus = 'paid';
+      } else if (req.user.role === 'manager') {
+        Object.assign(filter, managerCompletedDeliveryFilter());
+      } else {
         return res.status(403).json({ success: false, message: 'Access denied.' });
       }
-      filter.status = 'completed';
-      filter.paymentStatus = 'paid';
-    }
-
-    if (req.user.role === 'manager') {
+    } else if (req.user.role === 'manager') {
       filter.$and = [...(filter.$and || []), managerWorkOrderFilter()];
     }
 
@@ -229,7 +232,7 @@ exports.updateWorkOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Work order not found.' });
     }
 
-    if (!assertManagerCanAccessWorkOrder(req, res, order)) return;
+    if (!assertManagerCanAccessWorkOrder(req, res, order, { forMutation: true })) return;
 
     if (order.status === 'cancelled') {
       return res.status(400).json({ success: false, message: 'Cannot update a cancelled order.' });
@@ -305,6 +308,49 @@ exports.updateWorkOrder = async (req, res) => {
     await recalculateWorkOrderAmount(order._id);
 
     const populated = await WorkOrder.findById(order._id).populate(populateWorkOrder);
+    return res.json({ success: true, data: { workOrder: populated } });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+exports.markDoctorReceived = async (req, res) => {
+  try {
+    if (req.user.role !== 'manager' && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+
+    const order = await WorkOrder.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Work order not found.' });
+    }
+
+    if (order.status !== 'completed' || order.paymentStatus !== 'paid') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only completed and fully paid orders can be marked as received by the doctor.',
+      });
+    }
+
+    if (order.doctorReceivedOrder) {
+      const already = await WorkOrder.findById(order._id).populate([
+        ...populateWorkOrder,
+        { path: 'doctorReceivedBy', select: 'name email' },
+      ]);
+      return res.json({ success: true, data: { workOrder: already } });
+    }
+
+    order.doctorReceivedOrder = true;
+    order.doctorReceivedAt = new Date();
+    order.doctorReceivedBy = req.user._id;
+    await order.save();
+
+    const populated = await WorkOrder.findById(order._id).populate([
+      ...populateWorkOrder,
+      { path: 'doctorReceivedBy', select: 'name email' },
+    ]);
+
     return res.json({ success: true, data: { workOrder: populated } });
   } catch (err) {
     console.error(err);

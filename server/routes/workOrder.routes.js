@@ -88,6 +88,15 @@ router.post(
 );
 
 router.patch(
+  '/:id/doctor-received',
+  verifyToken,
+  allowRoles('admin', 'manager'),
+  idParam,
+  validateRequest,
+  workOrderController.markDoctorReceived
+);
+
+router.patch(
   '/:id/cancel',
   verifyToken,
   allowRoles('admin'),

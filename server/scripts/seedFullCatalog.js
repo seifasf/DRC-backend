@@ -115,23 +115,91 @@ const tests = [
   },
 
   {
-    name: 'Universal testing machine',
+    name: 'Shear test',
     category: 'Mechanical',
-    description:
-      'UTM � bill standard test group (shear, tensile, flexural, compressive, pull-out, retention, fracture resistance) at 200 LE/sample, OR micro-shear at 100 LE/sample.',
-    machine: 'Universal testing machine',
+    description: '',
+    machine: '',
     unitLabel: 'sample',
-    pricePerUnit: 0,
+    pricePerUnit: 200,
     pricingTiers: [],
-    pricingComponents: [
-      {
-        code: 'utm_standard_group',
-        label: 'Shear / tensile / flexural / compressive / pull-out / retention / fracture resistance',
-        pricePerUnit: 200,
-        billUnitLabel: 'sample',
-      },
-      { code: 'utm_micro_shear', label: 'Micro-shear', pricePerUnit: 100, billUnitLabel: 'sample' },
-    ],
+    pricingComponents: [],
+    isAvailable: true,
+  },
+  {
+    name: 'Tensile test',
+    category: 'Mechanical',
+    description: '',
+    machine: '',
+    unitLabel: 'sample',
+    pricePerUnit: 200,
+    pricingTiers: [],
+    pricingComponents: [],
+    isAvailable: true,
+  },
+  {
+    name: 'Flexural test',
+    category: 'Mechanical',
+    description: '',
+    machine: '',
+    unitLabel: 'sample',
+    pricePerUnit: 200,
+    pricingTiers: [],
+    pricingComponents: [],
+    isAvailable: true,
+  },
+  {
+    name: 'Compressive test',
+    category: 'Mechanical',
+    description: '',
+    machine: '',
+    unitLabel: 'sample',
+    pricePerUnit: 200,
+    pricingTiers: [],
+    pricingComponents: [],
+    isAvailable: true,
+  },
+  {
+    name: 'Pull-out test (UTM)',
+    category: 'Mechanical',
+    description: '',
+    machine: '',
+    unitLabel: 'sample',
+    pricePerUnit: 200,
+    pricingTiers: [],
+    pricingComponents: [],
+    isAvailable: true,
+  },
+  {
+    name: 'Retention test',
+    category: 'Mechanical',
+    description: '',
+    machine: '',
+    unitLabel: 'sample',
+    pricePerUnit: 200,
+    pricingTiers: [],
+    pricingComponents: [],
+    isAvailable: true,
+  },
+  {
+    name: 'Fracture resistance test',
+    category: 'Mechanical',
+    description: '',
+    machine: '',
+    unitLabel: 'sample',
+    pricePerUnit: 200,
+    pricingTiers: [],
+    pricingComponents: [],
+    isAvailable: true,
+  },
+  {
+    name: 'Micro-shear test',
+    category: 'Mechanical',
+    description: '',
+    machine: '',
+    unitLabel: 'sample',
+    pricePerUnit: 100,
+    pricingTiers: [],
+    pricingComponents: [],
     isAvailable: true,
   },
 
@@ -363,6 +431,23 @@ async function main() {
 
   const testTotal = await Test.countDocuments();
   const blockTotal = await BlockProduct.countDocuments();
+
+  const legacyUtm = await Test.updateOne(
+    { name: 'Universal testing machine' },
+    {
+      $set: {
+        isAvailable: false,
+        description: '',
+        machine: '',
+        pricePerUnit: 0,
+        pricingTiers: [],
+        pricingComponents: [],
+      },
+    }
+  );
+  if (legacyUtm.matchedCount) {
+    console.log('Legacy "Universal testing machine" catalog entry set to unavailable (split into separate tests).');
+  }
 
   console.log(`Tests: ${testInserted} inserted, ${testUpdated} updated. Total in DB: ${testTotal}`);
   console.log(`Blocks: ${blockInserted} inserted, ${blockUpdated} updated. Total in DB: ${blockTotal}`);

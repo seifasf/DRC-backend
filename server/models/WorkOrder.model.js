@@ -55,9 +55,15 @@ const workOrderSchema = new mongoose.Schema(
     staffLinePricingUsed: { type: Boolean, default: false },
     staffLinePricingAt: Date,
     staffLinePricingBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    /** Manager marks when the referring doctor collected the order; hides from delivery queue. */
+    doctorReceivedOrder: { type: Boolean, default: false },
+    doctorReceivedAt: Date,
+    doctorReceivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }
 );
+
+workOrderSchema.index({ status: 1, paymentStatus: 1, doctorReceivedOrder: 1 });
 
 workOrderSchema.index({ status: 1 });
 workOrderSchema.index({ status: 1, paymentStatus: 1 });

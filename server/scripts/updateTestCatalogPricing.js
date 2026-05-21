@@ -63,22 +63,20 @@ const patches = [
     pricingTiers: [],
     pricingComponents: [],
   },
+  { name: 'Shear test', pricePerUnit: 200, unitLabel: 'sample', pricingTiers: [], pricingComponents: [] },
+  { name: 'Tensile test', pricePerUnit: 200, unitLabel: 'sample', pricingTiers: [], pricingComponents: [] },
+  { name: 'Flexural test', pricePerUnit: 200, unitLabel: 'sample', pricingTiers: [], pricingComponents: [] },
+  { name: 'Compressive test', pricePerUnit: 200, unitLabel: 'sample', pricingTiers: [], pricingComponents: [] },
+  { name: 'Pull-out test (UTM)', pricePerUnit: 200, unitLabel: 'sample', pricingTiers: [], pricingComponents: [] },
+  { name: 'Retention test', pricePerUnit: 200, unitLabel: 'sample', pricingTiers: [], pricingComponents: [] },
   {
-    name: 'Universal testing machine',
-    pricePerUnit: 0,
+    name: 'Fracture resistance test',
+    pricePerUnit: 200,
     unitLabel: 'sample',
     pricingTiers: [],
-    pricingComponents: [
-      {
-        code: 'utm_standard_group',
-        label:
-          'Shear, tensile, flexural, compressive, pull-out, retention, fracture resistance (per sample)',
-        pricePerUnit: 200,
-        billUnitLabel: 'sample',
-      },
-      { code: 'utm_micro_shear', label: 'Micro-shear (per sample)', pricePerUnit: 100, billUnitLabel: 'sample' },
-    ],
+    pricingComponents: [],
   },
+  { name: 'Micro-shear test', pricePerUnit: 100, unitLabel: 'sample', pricingTiers: [], pricingComponents: [] },
   {
     name: 'Push out test',
     pricePerUnit: 0,
@@ -120,6 +118,18 @@ async function main() {
       console.log(`Updated pricing: ${name}`);
     }
   }
+
+  await Test.updateOne(
+    { name: 'Universal testing machine' },
+    {
+      $set: {
+        isAvailable: false,
+        pricePerUnit: 0,
+        pricingTiers: [],
+        pricingComponents: [],
+      },
+    }
+  );
 
   console.log(`Done. Matched & updated: ${updated}. Not found: ${missing}.`);
   await mongoose.connection.close();

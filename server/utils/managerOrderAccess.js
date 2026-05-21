@@ -8,14 +8,25 @@ function isClosedOrder(order) {
 }
 
 /**
+ * @param {{ forMutation?: boolean }} opts — when true, managers cannot change closed (completed+paid) orders.
  * @returns {boolean} false if response was sent (403)
  */
-function assertManagerCanAccessWorkOrder(req, res, order) {
-  if (req.user?.role === 'manager' && isClosedOrder(order)) {
+function assertManagerCanAccessWorkOrder(req, res, order, opts = {}) {
+  const forMutation = opts.forMutation === true;
+  if (req.user?.role === 'manager' && forMutation && isClosedOrder(order)) {
     res.status(403).json({ success: false, message: 'Access denied.' });
     return false;
   }
   return true;
+}
+
+/** Completed, paid, not yet marked received by doctor (manager delivery queue). */
+function managerCompletedDeliveryFilter() {
+  return {
+    status: 'completed',
+    paymentStatus: 'paid',
+    doctorReceivedOrder: { $ne: true },
+  };
 }
 
 /**
@@ -31,4 +42,5 @@ module.exports = {
   isClosedOrder,
   assertManagerCanAccessWorkOrder,
   managerWorkOrderFilter,
+  managerCompletedDeliveryFilter,
 };
