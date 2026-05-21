@@ -84,13 +84,8 @@ exports.createWorkOrder = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { doctorName, doctorPhone, notes, dueDate, items, blocksProvidedBy, blockLines } =
-      req.body;
-
-    if (!Array.isArray(items) || items.length === 0) {
-      await session.abortTransaction();
-      return res.status(400).json({ success: false, message: 'At least one order item is required.' });
-    }
+    const { doctorName, doctorPhone, notes, dueDate, blocksProvidedBy, blockLines } = req.body;
+    const items = Array.isArray(req.body.items) ? req.body.items : [];
 
     let testsTotal = 0;
     const linePayloads = [];
@@ -160,6 +155,16 @@ exports.createWorkOrder = async (req, res) => {
         return res.status(400).json({ success: false, message: e.message });
       }
       throw e;
+    }
+
+    const hasLabBlocks = resolvedBlockLines.some((l) => Number(l.quantity) > 0);
+    if (linePayloads.length === 0 && blocksProvidedBy === 'lab' && !hasLabBlocks) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message:
+          'Add at least one test line or at least one lab block line with quantity.',
+      });
     }
 
     const staffPricingOnCreate =

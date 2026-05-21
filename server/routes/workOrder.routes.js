@@ -9,26 +9,68 @@ const router = express.Router();
 
 const idParam = param('id').isMongoId().withMessage('Invalid work order id');
 
+/** Skip per-item validators when order has no test lines (blocks-only orders). */
+const hasOrderItems = (_value, { req }) =>
+  Array.isArray(req.body.items) && req.body.items.length > 0;
+
+/** Skip per-block validators when blockLines is empty (customer-provided blocks). */
+const hasBlockLines = (_value, { req }) =>
+  Array.isArray(req.body.blockLines) && req.body.blockLines.length > 0;
+
 const createWorkOrderValidation = [
   body('doctorName').trim().notEmpty().withMessage('Doctor name is required'),
   body('doctorPhone').trim().notEmpty().withMessage('Doctor phone is required'),
   body('notes').optional().isString(),
   body('dueDate').optional().isISO8601().toDate(),
-  body('items').isArray({ min: 1 }).withMessage('items array is required'),
-  body('items.*.testId').isMongoId().withMessage('Each item needs valid testId'),
-  body('items.*.quantity').optional().isInt({ min: 1 }).withMessage('Each item needs quantity >= 1 when sent'),
-  body('items.*.assignedTo').optional().isMongoId(),
-  body('items.*.pricingTierCode').optional().isString(),
-  body('items.*.componentQuantities').optional().isObject(),
-  body('items.*.componentUnitPrices').optional().isObject(),
-  body('items.*.tierPriceOverride').optional({ values: 'falsy' }).isFloat({ min: 0 }),
-  body('items.*.simpleUnitPriceOverride').optional({ values: 'falsy' }).isFloat({ min: 0 }),
+  body('items').default([]).isArray().withMessage('items must be an array'),
+  body('items.*.testId')
+    .if(hasOrderItems)
+    .isMongoId()
+    .withMessage('Each item needs valid testId'),
+  body('items.*.quantity')
+    .if(hasOrderItems)
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Each item needs quantity >= 1 when sent'),
+  body('items.*.assignedTo').if(hasOrderItems).optional().isMongoId(),
+  body('items.*.pricingTierCode').if(hasOrderItems).optional().isString(),
+  body('items.*.componentQuantities').if(hasOrderItems).optional().isObject(),
+  body('items.*.componentUnitPrices').if(hasOrderItems).optional().isObject(),
+  body('items.*.tierPriceOverride')
+    .if(hasOrderItems)
+    .optional({ values: 'falsy' })
+    .isFloat({ min: 0 }),
+  body('items.*.simpleUnitPriceOverride')
+    .if(hasOrderItems)
+    .optional({ values: 'falsy' })
+    .isFloat({ min: 0 }),
   body('blocksProvidedBy')
     .isIn(['lab', 'customer'])
     .withMessage('blocksProvidedBy must be lab (we supply blocks) or customer (outsourced / client blocks)'),
-  body('blockLines').isArray().withMessage('blockLines is required — use [] if no blocks'),
-  body('blockLines.*.blockProductId').isMongoId().withMessage('Each block line needs blockProductId'),
-  body('blockLines.*.quantity').isInt({ min: 0 }).withMessage('Each block line needs quantity >= 0'),
+  body('blockLines').default([]).isArray().withMessage('blockLines must be an array'),
+  body('blockLines.*.blockProductId')
+    .if(hasBlockLines)
+    .isMongoId()
+    .withMessage('Each block line needs blockProductId'),
+  body('blockLines.*.quantity')
+    .if(hasBlockLines)
+    .isInt({ min: 0 })
+    .withMessage('Each block line needs quantity >= 0'),
+  body().custom((_, { req }) => {
+    const items = Array.isArray(req.body.items) ? req.body.items : [];
+    req.body.items = items;
+    if (!Array.isArray(req.body.blockLines)) req.body.blockLines = [];
+    const mode = req.body.blocksProvidedBy;
+    const blockLines = req.body.blockLines;
+    const hasTests = items.length > 0;
+    const hasLabBlocks =
+      mode === 'lab' &&
+      blockLines.some((l) => l.blockProductId && Number(l.quantity) > 0);
+    if (hasTests || hasLabBlocks || mode === 'customer') return true;
+    throw new Error(
+      'Add at least one test line or at least one lab block line with quantity.'
+    );
+  }),
 ];
 
 const updateWorkOrderValidation = [
