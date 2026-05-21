@@ -40,6 +40,8 @@ const testSchema = new mongoose.Schema(
     /** Sum-of-lines billing. Order lines must send componentQuantities { code: count }. */
     pricingComponents: { type: [pricingComponentSchema], default: [] },
     isAvailable: { type: Boolean, default: true },
+    /** When true, staff may set simpleUnitPriceOverride on order lines (catalog price unchanged). */
+    allowOrderUnitPriceOverride: { type: Boolean, default: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }

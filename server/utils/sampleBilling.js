@@ -31,10 +31,15 @@ function simpleUnitLooksLikeSamples(test) {
   return looksLikeSample(test.unitLabel);
 }
 
+function testAllowsOrderUnitPriceOverride(test) {
+  return test?.allowOrderUnitPriceOverride === true;
+}
+
 module.exports = {
   looksLikeSample,
   tierHasSamples,
   testHasSampleTier,
   testHasSampleComponents,
   simpleUnitLooksLikeSamples,
+  testAllowsOrderUnitPriceOverride,
 };

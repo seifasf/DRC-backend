@@ -57,8 +57,7 @@ const tests = [
   {
     name: 'Micro-tensile test',
     category: 'Mechanical',
-    description:
-      'Cutting per sample (any number of beams obtained), micro-tensile per beam, failure-mode per beam.',
+    description: 'Cutting per sample and micro-tensile per beam (order failure mode as a separate test).',
     machine: 'Micro-tensile rig',
     unitLabel: 'billable unit',
     pricePerUnit: 0,
@@ -66,8 +65,33 @@ const tests = [
     pricingComponents: [
       { code: 'cutting_sample', label: 'Cutting (per sample, any beams obtained)', pricePerUnit: 350, billUnitLabel: 'sample' },
       { code: 'microtensile_beam', label: 'Micro-tensile test (per beam)', pricePerUnit: 45, billUnitLabel: 'beam' },
-      { code: 'failure_mode_beam', label: 'Failure mode (per beam)', pricePerUnit: 50, billUnitLabel: 'beam' },
     ],
+    isAvailable: true,
+  },
+
+  {
+    name: 'Mode of failure',
+    category: 'Mechanical',
+    description: 'Failure mode analysis per beam.',
+    machine: 'Micro-tensile rig',
+    unitLabel: 'beam',
+    pricePerUnit: 100,
+    pricingTiers: [],
+    pricingComponents: [],
+    allowOrderUnitPriceOverride: true,
+    isAvailable: true,
+  },
+
+  {
+    name: 'EDX',
+    category: 'Surface analysis',
+    description: 'Energy-dispersive X-ray spectroscopy.',
+    machine: '',
+    unitLabel: 'sample',
+    pricePerUnit: 300,
+    pricingTiers: [],
+    pricingComponents: [],
+    allowOrderUnitPriceOverride: true,
     isAvailable: true,
   },
 

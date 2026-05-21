@@ -43,6 +43,9 @@ const updateLineValidation = [
 ];
 
 const staff = [verifyToken, allowRoles('admin', 'employee', 'manager')];
+const labStaff = [verifyToken, allowRoles('employee', 'manager')];
+
+router.get('/mine', ...labStaff, orderItemController.listMyOrderItems);
 
 router.get('/:workOrderId', ...staff, workOrderIdParam, validateRequest, orderItemController.listByWorkOrder);
 router.post('/:workOrderId', ...staff, addItemValidation, validateRequest, orderItemController.addOrderItem);

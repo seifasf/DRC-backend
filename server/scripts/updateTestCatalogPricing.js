@@ -32,8 +32,23 @@ const patches = [
     pricingComponents: [
       { code: 'cutting_sample', label: 'Cutting (per sample, any number of beams obtained)', pricePerUnit: 350, billUnitLabel: 'sample' },
       { code: 'microtensile_beam', label: 'Micro-tensile test (per beam)', pricePerUnit: 40, billUnitLabel: 'beam' },
-      { code: 'failure_mode_beam', label: 'Failure mode (per beam)', pricePerUnit: 50, billUnitLabel: 'beam' },
     ],
+  },
+  {
+    name: 'Mode of failure',
+    pricePerUnit: 100,
+    unitLabel: 'beam',
+    pricingTiers: [],
+    pricingComponents: [],
+    allowOrderUnitPriceOverride: true,
+  },
+  {
+    name: 'EDX',
+    pricePerUnit: 300,
+    unitLabel: 'sample',
+    pricingTiers: [],
+    pricingComponents: [],
+    allowOrderUnitPriceOverride: true,
   },
   {
     name: 'Thermocycling',

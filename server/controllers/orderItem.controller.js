@@ -86,6 +86,32 @@ function buildLineInputFromBody(test, item, body) {
   };
 }
 
+exports.listMyOrderItems = async (req, res) => {
+  try {
+    const filter = { assignedTo: req.user._id };
+    const { status, workOrderStatus } = req.query;
+    if (status && ['queued', 'in_progress', 'done'].includes(String(status))) {
+      filter.status = status;
+    }
+
+    let items = await OrderItem.find(filter)
+      .populate('testId', 'name category unitLabel pricePerUnit pricingTiers pricingComponents allowOrderUnitPriceOverride')
+      .populate('workOrderId', 'orderCode doctorName doctorPhone status paymentStatus totalAmount')
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    if (workOrderStatus && String(workOrderStatus).trim()) {
+      const ws = String(workOrderStatus).trim();
+      items = items.filter((it) => it.workOrderId && it.workOrderId.status === ws);
+    }
+
+    return res.json({ success: true, data: { orderItems: items } });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
 exports.listByWorkOrder = async (req, res) => {
   try {
     const { workOrderId } = req.params;
@@ -186,8 +212,11 @@ exports.assignOrderItem = async (req, res) => {
     if (!assertManagerCanAccessWorkOrder(req, res, workOrder)) return;
 
     const assignee = await User.findById(req.body.assignedTo);
-    if (!assignee || assignee.role !== 'employee') {
-      return res.status(400).json({ success: false, message: 'Must assign to an employee user.' });
+    if (!assignee || (assignee.role !== 'employee' && assignee.role !== 'manager')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Must assign to lab staff (employee or manager).',
+      });
     }
 
     item.assignedTo = assignee._id;

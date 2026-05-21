@@ -158,7 +158,8 @@ function resolveOrderLinePricing(test, line, options = {}) {
       err.status = 400;
       throw err;
     }
-    if (!relax && !simpleUnitLooksLikeSamples(test)) {
+    const allowFlag = test.allowOrderUnitPriceOverride === true;
+    if (!relax && !allowFlag && !simpleUnitLooksLikeSamples(test)) {
       const err = new Error('Custom unit price is only allowed when the test bills by sample-like units.');
       err.status = 400;
       throw err;
