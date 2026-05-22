@@ -3,6 +3,7 @@ const WorkOrder = require('../models/WorkOrder.model');
 const Test = require('../models/Test.model');
 const User = require('../models/User.model');
 const recalculateWorkOrderAmount = require('../utils/recalculateWorkOrderAmount');
+const syncBlockLineOrderItems = require('../utils/syncBlockLineOrderItems');
 const resolveOrderLinePricing = require('../utils/resolveOrderLinePricing');
 const { assertManagerCanAccessWorkOrder } = require('../utils/managerOrderAccess');
 const {
@@ -96,6 +97,7 @@ exports.listMyOrderItems = async (req, res) => {
 
     let items = await OrderItem.find(filter)
       .populate('testId', 'name category unitLabel pricePerUnit pricingTiers pricingComponents allowOrderUnitPriceOverride')
+      .populate('blockProductId', 'name category unitLabel pricePerUnit')
       .populate('workOrderId', 'orderCode doctorName doctorPhone status paymentStatus totalAmount')
       .sort({ updatedAt: -1 })
       .lean();
@@ -121,10 +123,23 @@ exports.listByWorkOrder = async (req, res) => {
     }
     if (!assertManagerCanAccessWorkOrder(req, res, workOrder)) return;
 
-    const items = await OrderItem.find({ workOrderId })
+    let items = await OrderItem.find({ workOrderId })
       .populate('testId')
+      .populate('blockProductId', 'name category unitLabel pricePerUnit')
       .populate('assignedTo', 'name email role')
       .lean();
+
+    const hasLabBlocks =
+      workOrder.blocksProvidedBy === 'lab' &&
+      (workOrder.blockLines || []).some((l) => Number(l.quantity) > 0);
+    if (items.length === 0 && hasLabBlocks) {
+      await syncBlockLineOrderItems(workOrderId);
+      items = await OrderItem.find({ workOrderId })
+        .populate('testId')
+        .populate('blockProductId', 'name category unitLabel pricePerUnit')
+        .populate('assignedTo', 'name email role')
+        .lean();
+    }
 
     return res.json({ success: true, data: { orderItems: items } });
   } catch (err) {
@@ -227,6 +242,7 @@ exports.assignOrderItem = async (req, res) => {
 
     const populated = await OrderItem.findById(item._id)
       .populate('testId')
+      .populate('blockProductId', 'name category unitLabel pricePerUnit')
       .populate('assignedTo', 'name email');
 
     return res.json({ success: true, data: { orderItem: populated } });

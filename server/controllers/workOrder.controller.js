@@ -3,6 +3,7 @@ const WorkOrder = require('../models/WorkOrder.model');
 const OrderItem = require('../models/OrderItem.model');
 const Test = require('../models/Test.model');
 const buildWorkOrderBlockLines = require('../utils/buildWorkOrderBlockLines');
+const syncBlockLineOrderItems = require('../utils/syncBlockLineOrderItems');
 const recalculateWorkOrderAmount = require('../utils/recalculateWorkOrderAmount');
 const resolveOrderLinePricing = require('../utils/resolveOrderLinePricing');
 const {
@@ -201,9 +202,16 @@ exports.createWorkOrder = async (req, res) => {
       workOrderId: workOrder._id,
     }));
 
-    await OrderItem.insertMany(orderItems, { session });
+    if (orderItems.length) {
+      await OrderItem.insertMany(orderItems, { session });
+    }
 
-    if (linePayloads.some((p) => p.status === 'in_progress')) {
+    if (blocksProvidedBy === 'lab' && hasLabBlocks) {
+      await syncBlockLineOrderItems(workOrder._id, { session });
+    }
+
+    const allCreated = await OrderItem.find({ workOrderId: workOrder._id }).session(session);
+    if (allCreated.some((p) => p.status === 'in_progress')) {
       workOrder.status = 'in_progress';
       await workOrder.save({ session });
     }
@@ -215,6 +223,7 @@ exports.createWorkOrder = async (req, res) => {
     const populated = await WorkOrder.findById(workOrder._id).populate(populateWorkOrder);
     const createdItems = await OrderItem.find({ workOrderId: workOrder._id })
       .populate('testId')
+      .populate('blockProductId', 'name category unitLabel pricePerUnit')
       .populate('assignedTo', 'name email');
 
     return res.status(201).json({
@@ -310,6 +319,11 @@ exports.updateWorkOrder = async (req, res) => {
     }
 
     await order.save();
+
+    if (blockPayloadChanged) {
+      await syncBlockLineOrderItems(order._id);
+    }
+
     await recalculateWorkOrderAmount(order._id);
 
     const populated = await WorkOrder.findById(order._id).populate(populateWorkOrder);

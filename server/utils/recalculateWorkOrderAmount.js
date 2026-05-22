@@ -12,7 +12,10 @@ async function recalculateWorkOrderAmount(workOrderId, options = {}) {
   const itemQuery = OrderItem.find({ workOrderId });
   if (session) itemQuery.session(session);
   const items = await itemQuery;
-  const testsTotal = items.reduce((acc, i) => acc + i.subtotal, 0);
+  const testsTotal = items.reduce(
+    (acc, i) => (i.blockProductId ? acc : acc + (Number(i.subtotal) || 0)),
+    0
+  );
 
   const woQuery = WorkOrder.findById(workOrderId);
   if (session) woQuery.session(session);
