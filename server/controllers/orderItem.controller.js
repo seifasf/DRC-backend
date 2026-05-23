@@ -265,12 +265,27 @@ exports.updateOrderItemStatus = async (req, res) => {
     }
     if (!assertManagerCanAccessWorkOrder(req, res, workOrder)) return;
 
-    item.status = req.body.status;
+    const role = req.user.role;
+    if (role === 'employee' || role === 'manager') {
+      if (!item.assignedTo || String(item.assignedTo) !== String(req.user._id)) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only update tasks assigned to you.',
+        });
+      }
+    }
+
+    const nextStatus = req.body.status;
+    item.status = nextStatus;
+    if (nextStatus === 'done') {
+      item.completedUnits = Number(item.quantity) || 0;
+    }
     await item.save();
     await syncWorkOrderProgress(item.workOrderId);
 
     const populated = await OrderItem.findById(item._id)
       .populate('testId')
+      .populate('blockProductId', 'name category unitLabel pricePerUnit')
       .populate('assignedTo', 'name email');
 
     return res.json({ success: true, data: { orderItem: populated } });
