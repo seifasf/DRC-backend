@@ -309,6 +309,13 @@ exports.updateOrderItemLine = async (req, res) => {
 
     if (!assertManagerCanAccessWorkOrder(req, res, workOrder)) return;
 
+    if (item.blockProductId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Block lines are managed on the order; edit blocks on the work order instead.',
+      });
+    }
+
     const test = await Test.findById(item.testId);
     if (!test || !test.isAvailable) {
       return res.status(400).json({ success: false, message: 'Invalid or unavailable test.' });

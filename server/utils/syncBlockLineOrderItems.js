@@ -62,7 +62,8 @@ async function syncBlockLineOrderItems(workOrderId, options = {}) {
       existing.unitPrice = payload.unitPrice;
       existing.subtotal = payload.subtotal;
       existing.pricingBreakdown = payload.pricingBreakdown;
-      await existing.save(findOpts);
+      if (session) await existing.save({ session });
+      else await existing.save();
     } else {
       await OrderItem.create(
         [
