@@ -38,15 +38,16 @@ orderItemSchema.index({ assignedTo: 1 });
 orderItemSchema.index({ workOrderId: 1, testId: 1 });
 orderItemSchema.index({ workOrderId: 1, blockProductId: 1 }, { sparse: true });
 
-orderItemSchema.pre('validate', function (next) {
+orderItemSchema.pre('validate', function () {
   const hasTest = !!this.testId;
   const hasBlock = !!this.blockProductId;
   if (hasTest === hasBlock) {
-    return next(
-      new Error(hasTest && hasBlock ? 'Line cannot be both a test and a block.' : 'testId or blockProductId is required.')
+    throw new Error(
+      hasTest && hasBlock
+        ? 'Line cannot be both a test and a block.'
+        : 'testId or blockProductId is required.'
     );
   }
-  next();
 });
 
 orderItemSchema.pre('save', function () {

@@ -231,9 +231,12 @@ exports.createWorkOrder = async (req, res) => {
       data: { workOrder: populated, orderItems: createdItems },
     });
   } catch (err) {
-    await session.abortTransaction();
-    console.error(err);
-    return res.status(500).json({ success: false, message: 'Server error.' });
+    if (session.inTransaction()) {
+      await session.abortTransaction().catch(() => {});
+    }
+    const msg = err?.message || 'Server error.';
+    const status = err?.status === 400 || err?.name === 'ValidationError' ? 400 : 500;
+    return res.status(status).json({ success: false, message: msg });
   } finally {
     session.endSession();
   }
